@@ -1,0 +1,38 @@
+### Java / Maven ###
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### IDE ###
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+
+### 前端（Vue） ###
+node_modules/
+dist/
+dist-ssr/
+.vite/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+### 配置与凭据（不进仓库） ###
+.env
+.env.local
+**/application-local.yml
+**/application-dev.yml
+
+### 日志与运行时产物 ###
+logs/
+*.log
+app.pid
+
+### 工具目录 ###
+.codebuddy/
