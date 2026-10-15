@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: link-auth
+
+server:
+  port: 8081

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.aaf</groupId>
+        <artifactId>link-platform</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>link-common</artifactId>
+    <name>link-common</name>
+    <description>公共模块：统一返回、业务异常、租户上下文、常量</description>
+
+    <dependencies>
+        <!-- 关键：只借 spring-web 的注解（@RestControllerAdvice/@ExceptionHandler/ResponseEntity），
+             不引 spring-boot-starter-web，否则会把 Tomcat + WebMvc 自动配置经传递依赖拖进
+             WebFlux 网关导致启动失败 -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+        </dependency>
+        <!-- 踩坑：MethodArgumentNotValidException 继承自 org.springframework.validation.BindException，
+             而 BindException 在 spring-context 模块，spring-web 并不传递它，需显式引入 -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+        <!-- 踩坑：@Slf4j 生成的 log 字段引用 org.slf4j.Logger，需显式引入 slf4j-api（仅 API，
+             具体 binding 由各服务的 spring-boot-starter-logging 提供） -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+        <!-- Result 序列化用（版本由 Boot BOM 管理） -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>
