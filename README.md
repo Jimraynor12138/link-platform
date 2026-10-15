@@ -22,9 +22,11 @@ MyBatis-Plus · MySQL 8 · Redis · RabbitMQ（可切换 Kafka）· Redisson · 
 
 ## 状态
 
-开发中 — P0：多模块骨架与短链核心迁移
+- ✅ V0（P0）：多模块骨架 + 短链核心迁移 + 公共类上移（198 单测通过，详见开发日志）
+- ⏳ V1（P1）：link-auth 租户化重构（租户 + RBAC + 双 Token + API Key）
 
 ## 文档
 
-- `docs/01-需求与架构.md`
-- `docs/02-开发日志.md`
+- `docs/01-需求与架构.md`：产品定位、能力对比、商业卖点、V0~V7 版本路线图
+- `docs/02-开发日志.md`：各版本索引
+- `docs/devlog/V0-P0-多模块骨架与核心迁移.md`：P0 详细留痕（决策 / 踩坑 / 验证数据）
