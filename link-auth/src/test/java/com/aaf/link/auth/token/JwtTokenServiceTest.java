@@ -2,11 +2,13 @@ package com.aaf.link.auth.token;
 
 import com.aaf.link.auth.config.AuthProperties;
 import com.aaf.link.auth.model.dto.LoginUser;
+import io.jsonwebtoken.security.WeakKeyException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 令牌服务单测：证明"租户标识与 jti 在签发/解析两端一致"。
@@ -70,6 +72,17 @@ class JwtTokenServiceTest {
         assertThat(jwtTokenService.getTokenId("not-a-token")).isNull();
         assertThat(jwtTokenService.getUserId("not-a-token")).isNull();
         assertThat(jwtTokenService.getRemainingExpirationMillis("not-a-token")).isZero();
+    }
+
+    @Test
+    void tooShortSecretIsRejected() {
+        // 防呆：密钥不足 32 字节时 HS256 不可用，必须快速失败而不是悄悄用弱密钥签名
+        AuthProperties weak = new AuthProperties();
+        weak.getJwt().setSecret("too-short");
+        JwtTokenService weakService = new JwtTokenService(weak);
+
+        assertThatThrownBy(() -> weakService.generateAccessToken(user))
+                .isInstanceOf(WeakKeyException.class);
     }
 
     @Test

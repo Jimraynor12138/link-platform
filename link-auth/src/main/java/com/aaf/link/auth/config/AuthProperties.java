@@ -1,9 +1,11 @@
 package com.aaf.link.auth.config;
 
+import jakarta.annotation.PostConstruct;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,6 +24,27 @@ public class AuthProperties {
 
     /** 免认证路径 */
     private List<String> permitAll = new ArrayList<>();
+
+    /**
+     * 启动期校验 JWT 密钥（fail-fast）。
+     *
+     * <p><b>为什么必须显式校验</b>：{@code application.yml} 里密钥写成 {@code ${LINK_AUTH_JWT_SECRET}} 且不给默认值，
+     * 但 Spring Boot 绑定配置时对"无法解析的占位符"默认是<b>原样保留</b>（不报错），
+     * 于是密钥会变成字面量 {@code "${LINK_AUTH_JWT_SECRET}"} —— 一个<b>可预测的密钥</b>，比"用默认值"更危险。
+     * 因此这里在启动期主动拦截：既拦"未配置"，也拦"占位符没解析"，还拦"强度不足"。
+     */
+    @PostConstruct
+    void validateJwtSecret() {
+        String secret = jwt.getSecret();
+        if (secret == null || secret.isBlank() || secret.contains("${")) {
+            throw new IllegalStateException(
+                    "未配置 JWT 签名密钥：请通过环境变量 LINK_AUTH_JWT_SECRET 注入（本地开发写入 application-dev.yml）。"
+                            + "缺失时拒绝启动，避免用可预测的密钥签发令牌");
+        }
+        if (secret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalStateException("JWT 签名密钥不足 32 字节，HS256 不可用");
+        }
+    }
 
     /**
      * 令牌配置。

@@ -25,7 +25,8 @@
 5. `UserDetailsServiceImpl`（加载用户 + 角色 + 权限，禁用状态即时生效）
 6. `AuthService`：登录 / 刷新轮换 / 登出撤销 + `AuthController` 四个接口
 7. 安全层：`SecurityConfig`（无状态）、`JwtAuthenticationFilter`、`TenantContextFilter`（注入 + finally 清理）、401/403 两个处理器
-8. 4 组单测（23 个用例）+ E2E 冒烟（9 步）
+8. 4 组单测（28 个用例）+ E2E 冒烟（9 步）
+9. **代码审查后的复审修复**：修掉审查发现的 S1（JWT 密钥硬编码默认值 → 启动期强制校验），见踩坑 7
 
 ---
 
@@ -36,7 +37,7 @@
 | 配置 | parent 加 jjwt 0.12.6 管理；link-auth 加 security/jjwt/mybatis-plus/redis/validation；`application.yml`（`link.auth.*`）+ `application-dev.example.yml` |
 | 数据库 | `deploy/sql/02-auth-schema.sql`：`t_tenant` / `t_user`(重建) / `t_role` / `t_user_role` / `t_permission` / `t_role_permission` / `t_api_key`（P1 仅建表）+ 种子数据 |
 | 代码 | 34 个源文件（7 实体 + 7 Mapper + 12 服务/安全/配置 + 控制器 + DTO/VO），包 `com.aaf.link.auth.*` |
-| 测试 | 5 个测试类 23 个用例：`AuthLoginTest` / `AuthRefreshTokenTest` / `AuthDisabledAndBlacklistTest` / `AuthTenantIsolationTest` / `JwtTokenServiceTest` |
+| 测试 | 6 个测试类 28 个用例：`AuthLoginTest` / `AuthRefreshTokenTest` / `AuthDisabledAndBlacklistTest` / `AuthTenantIsolationTest` / `JwtTokenServiceTest` / `AuthPropertiesTest` |
 | 文档 | 本文件、`docs/test/V1-测试报告.md`、`docs/plans/P1-*.md`、技术点台账更新 |
 
 ---
@@ -69,6 +70,7 @@
 | 4 | 改包名后第一轮替换漏了 **16 处**配置键 | `@ConditionalOnProperty(prefix = "shortlink.mq")`、`${shortlink.mq.queue}`（`@RabbitListener` 占位符）、`${shortlink.stats-persist.*}`（`@Scheduled`）、异常信息里的 `shortlink.snowflake.*`、系统属性 `shortlink.benchmark` —— 这些**既不是 import 也不是包声明**，肉眼与"只换 package/import"的脚本都会漏 | 第二轮补充替换 `shortlink.` → `link.core.`；**关键教训：包名改完只跑编译不够，必须跑测试**（但这些坑连单测都抓不到，最终是 E2E 才暴露） |
 | 5 | 包名统一后 common 的 Bean 全部扫不到 | `com.aaf.link.auth` 默认扫描范围不含 `com.aaf.link.common` | 启动类显式 `scanBasePackages = "com.aaf.link"`（P0 devlog 第 7 节预告的问题，此处还债） |
 | 6 | 批量改名脚本可能破坏中文注释 | Windows 终端默认 GBK，普通读写会把 UTF-8 中文注释读坏 | 脚本内用 `.NET` 的 `UTF8Encoding($false)` 显式读写（UTF-8 无 BOM） |
+| 7 | **复审 S1 时第一版修复无效**：原以为"去掉密钥默认值就会 fail-fast"，实测**应用照常启动** | Spring Boot 绑定配置时对**无法解析的占位符默认原样保留**（不报错），密钥变成了字面量 `"${LINK_AUTH_JWT_SECRET}"` —— 一个**可预测的密钥**，比"配一个默认值"**更危险** | 在 `AuthProperties` 加 `@PostConstruct` 启动期校验：空白 / 含 `${` / 不足 32 字节一律拒绝启动；补 4 个单测 |
 
 ---
 
@@ -77,8 +79,10 @@
 | 节点 | 命令 | 结果 |
 |---|---|---|
 | 包名规范化后回归 | `mvn clean test` | core `198 / 0 / 0 / 1`（**与 P0 基线一字不差**） |
-| auth 单测 | `mvn -pl link-auth -am test` | `23 / 0 / 0 / 0` |
-| 全量构建 + 全部测试 | `mvn clean install` | 6 模块 BUILD SUCCESS；core 198、auth 23 |
+| auth 单测 | `mvn -pl link-auth -am test` | `28 / 0 / 0 / 0` |
+| 全量构建 + 全部测试 | `mvn clean install` | 6 模块 BUILD SUCCESS；core 198、auth 28 |
+| S1 修复验证 | 非 dev 且不提供密钥启动 | **启动失败**（拒绝用可预测密钥签发令牌） |
+| S1 修复验证 | dev profile 启动 + 登录 | 正常（`login code=0`） |
 | E2E 冒烟（真实起服务 + MySQL + Redis） | 9 步 | 见下表 |
 
 **E2E 结果（9/9 通过）**
