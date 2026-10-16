@@ -1,5 +1,6 @@
 package com.aaf.link.auth.config;
 
+import com.aaf.link.auth.security.GatewayAuthHeaderFilter;
 import com.aaf.link.auth.security.JwtAuthenticationFilter;
 import com.aaf.link.auth.security.RestAccessDeniedHandler;
 import com.aaf.link.auth.security.RestAuthenticationEntryPoint;
@@ -38,6 +39,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final GatewayAuthHeaderFilter gatewayAuthHeaderFilter;
     private final TenantContextFilter tenantContextFilter;
     private final RestAuthenticationEntryPoint authenticationEntryPoint;
     private final RestAccessDeniedHandler accessDeniedHandler;
@@ -58,6 +60,7 @@ public class SecurityConfig {
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(gatewayAuthHeaderFilter, JwtAuthenticationFilter.class)
                 .addFilterAfter(tenantContextFilter, JwtAuthenticationFilter.class);
         return http.build();
     }

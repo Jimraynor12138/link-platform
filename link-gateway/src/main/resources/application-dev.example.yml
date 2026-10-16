@@ -1,0 +1,21 @@
+# ============================================================
+# 开发环境配置模板（link-gateway）
+#
+# 使用方法：复制本文件为同目录下的 application-dev.yml，再填入本地真实凭据。
+#   真实的 application-dev.yml 已被 .gitignore 排除，不会进仓库。
+# ============================================================
+spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      # 与 auth/core 一致：平台用 db 1，AAE 占 db 0
+      database: 1
+      timeout: 2s
+      connect-timeout: 2s
+
+# JWT 签名密钥：必须与 link-auth 的 application-dev.yml 完全一致（网关验签用同密钥）
+link:
+  gateway:
+    auth:
+      secret: 请替换为与 link-auth 一致的本地开发密钥（至少 32 字节）

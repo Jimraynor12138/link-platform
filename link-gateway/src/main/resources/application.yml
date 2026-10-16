@@ -9,6 +9,44 @@ spring:
         # 容错模式：SCA 默认 fail-fast=true，Nacos 不可用时"注册失败"会导致服务起不来。
         # 关闭后注册失败只告警，服务照常启动（本地开发不必先起 Docker）
         fail-fast: false
+    gateway:
+      # 不按服务名自动生成路由，显式配置更可控
+      discovery:
+        locator:
+          enabled: false
+      routes:
+        - id: link-auth
+          uri: lb://link-auth
+          predicates:
+            - Path=/auth/**
+        - id: link-core-api
+          uri: lb://link-core
+          predicates:
+            - Path=/api/v1/**
+        # 短链跳转（根路径单段，正则同 core 的 RedirectController）：
+        # 访客点击短链免鉴权，作为最低优先级 fallback 路由
+        - id: link-core-redirect
+          uri: lb://link-core
+          order: 100
+          predicates:
+            # 跳转：根路径单段字母数字。
+            # 注意：Gateway 的 Path 谓词（PathPattern）不支持 `{1,16}` 花括号量词（报
+            # "Invalid mapping pattern"），故用 `+`；core 的 RedirectController 里仍是 {1,16}
+            # 做最终长度校验，两者不冲突。
+            - "Path=/{code:[0-9a-zA-Z]+}"
+      # /internal/** 不在此配置任何路由：外部经网关访问该前缀直接 404（P2-2 收口）
 
 server:
   port: 8080
+
+# 网关鉴权配置
+link:
+  gateway:
+    auth:
+      # 与 link-auth 共享的 JWT 密钥（环境变量注入，无默认值——启动期校验，见 JwtVerifyProperties）
+      secret: ${LINK_AUTH_JWT_SECRET}
+      token-header: Authorization
+      token-head: "Bearer "
+      whitelist:
+        - /auth/login
+        - /auth/refresh
