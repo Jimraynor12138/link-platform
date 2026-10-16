@@ -92,6 +92,10 @@ public class GatewayAuthFilter implements GlobalFilter, Ordered {
         if (properties.getWhitelist().contains(path)) {
             return true;
         }
+        // /open/** 是第三方 API 入口：签名校验在 core 做，网关只放行（不要求 JWT）
+        if (path.startsWith("/open/")) {
+            return true;
+        }
         // 短链跳转：根路径单段字母数字，长度与 core 的 RedirectController 对齐（1~16 位），
         // 避免把超长单段路径也当公开跳转放行（String.matches 用的是 Java 正则，支持 {1,16}）
         return path.matches("/[0-9a-zA-Z]{1,16}");

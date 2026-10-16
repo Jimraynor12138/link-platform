@@ -1,6 +1,7 @@
 package com.aaf.link.core.config;
 
 import com.aaf.link.core.common.ratelimit.RateLimitInterceptor;
+import com.aaf.link.core.open.OpenApiAuthInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
@@ -18,10 +19,14 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig implements WebMvcConfigurer {
 
     private final RateLimitInterceptor rateLimitInterceptor;
+    private final OpenApiAuthInterceptor openApiAuthInterceptor;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(rateLimitInterceptor)
                 .addPathPatterns("/api/v1/link/**", "/api/v1/group/**");
+        // 开放 API：签名校验 + 防重放 + 配额
+        registry.addInterceptor(openApiAuthInterceptor)
+                .addPathPatterns("/open/**");
     }
 }

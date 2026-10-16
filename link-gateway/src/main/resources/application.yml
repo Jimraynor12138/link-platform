@@ -27,6 +27,11 @@ spring:
           uri: lb://link-core
           predicates:
             - Path=/api/v1/**
+        # 开放 API：签名校验在 core 的 /open/** 拦截器做，网关只放行（不要求 JWT）
+        - id: link-core-open
+          uri: lb://link-core
+          predicates:
+            - Path=/open/**
         # 短链跳转（根路径单段，正则同 core 的 RedirectController）：
         # 访客点击短链免鉴权，作为最低优先级 fallback 路由
         - id: link-core-redirect
