@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -40,6 +41,8 @@ class OpenApiAuthInterceptorTest {
     @Mock
     private AuthClient authClient;
     @Mock
+    private ObjectProvider<AuthClient> authClientProvider;
+    @Mock
     private StringRedisTemplate stringRedisTemplate;
     @Mock
     private ValueOperations<String, String> valueOperations;
@@ -50,7 +53,7 @@ class OpenApiAuthInterceptorTest {
 
     @BeforeEach
     void setUp() {
-        interceptor = new OpenApiAuthInterceptor(authClient, stringRedisTemplate, new ObjectMapper(), quotaService);
+        interceptor = new OpenApiAuthInterceptor(authClientProvider, stringRedisTemplate, new ObjectMapper(), quotaService);
 
         ApiKeyInfo info = new ApiKeyInfo();
         info.setTenantId(1L);
@@ -58,6 +61,7 @@ class OpenApiAuthInterceptorTest {
         info.setSecret(SECRET);
         info.setQuota(100000L);
         info.setStatus(1);
+        lenient().when(authClientProvider.getObject()).thenReturn(authClient);
         lenient().when(authClient.getApiKey(ACCESS_KEY)).thenReturn(Result.success(info));
         lenient().when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
         lenient().when(valueOperations.setIfAbsent(anyString(), anyString(), any(Duration.class))).thenReturn(true);

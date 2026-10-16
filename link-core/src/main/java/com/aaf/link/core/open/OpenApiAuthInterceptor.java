@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -43,7 +44,11 @@ public class OpenApiAuthInterceptor implements HandlerInterceptor {
     private static final String HEADER_NONCE = "X-Nonce";
     private static final String HEADER_SIGN = "X-Sign";
 
-    private final AuthClient authClient;
+    /**
+     * 用 ObjectProvider 惰性注入 AuthClient（Feign），打破
+     * WebConfig → 本拦截器 → AuthClient → EnableWebMvcConfiguration → WebConfig 的循环依赖。
+     */
+    private final ObjectProvider<AuthClient> authClientProvider;
     private final StringRedisTemplate stringRedisTemplate;
     private final ObjectMapper objectMapper;
     private final ApiQuotaService quotaService;
@@ -59,7 +64,7 @@ public class OpenApiAuthInterceptor implements HandlerInterceptor {
         }
 
         // 1. 取凭据（Feign 调 auth；下游不可用即 fail-closed，见 AuthClientFallback）
-        Result<ApiKeyInfo> keyResult = authClient.getApiKey(accessKey);
+        Result<ApiKeyInfo> keyResult = authClientProvider.getObject().getApiKey(accessKey);
         ApiKeyInfo info = keyResult == null ? null : keyResult.getData();
         if (info == null) {
             return writeError(response, HttpStatus.UNAUTHORIZED, "A0401", "API Key 无效");

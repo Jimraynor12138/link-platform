@@ -38,12 +38,23 @@ class CoreTenantLineHandlerTest {
     }
 
     @Test
-    void ignoresTablesWithoutTenantColumn() {
+    void tenantIgnoresOnlyTablesWithoutTenantColumn() {
+        TenantContext.setTenantId(1L);
         assertThat(handler.ignoreTable("t_sequence")).isTrue();
         assertThat(handler.ignoreTable("t_segment")).isTrue();
         assertThat(handler.ignoreTable("t_link")).isFalse();
         assertThat(handler.ignoreTable("t_link_stats")).isFalse();
         assertThat(handler.ignoreTable("t_group")).isFalse();
+    }
+
+    @Test
+    void platformOrNoContextIgnoresAllTables() {
+        TenantContext.setTenantId(0L);
+        assertThat(handler.ignoreTable("t_link")).isTrue();
+        assertThat(handler.ignoreTable("t_link_stats")).isTrue();
+
+        TenantContext.clear();
+        assertThat(handler.ignoreTable("t_link")).isTrue();
     }
 
     @Test
