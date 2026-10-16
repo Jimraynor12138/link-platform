@@ -145,7 +145,15 @@
 | **无本地快照**（删 `~/nacos` 后） | 启动 ✅；`/auth/login` → `code=0`（**代码兜底保住登录**）；`/swagger-ui.html` → 401、`/auth/me` → 401（确认完整白名单未生效、受保护接口仍被拦） |
 
 ### 5.6 全量
-`mvn clean install` → 6 模块 BUILD SUCCESS；存量 226 个单测全绿。
+`mvn clean install` → 6 模块 BUILD SUCCESS；单测合计 **230 个全绿**
+（core 202 = 基线 198 + 复审新增 `FeignConfigTest` 4；auth 28）。
+
+### 5.7 复审修复（P2-3 / P2-4 / P2-5 / P2-6）
+| 项 | 改法 | 验证 |
+|---|---|---|
+| P2-3 + P2-4 | 抽出 `ClassifiedErrorDecoder(objectMapper, retryOnServerError)`；全局 `FeignConfig` **不注册 Retryer** 且传 `false`（安全默认），只有 `AuthClient` 用 `@FeignClient(configuration = IdempotentReadFeignConfig.class)` 开启重试 | 单测 4 用例（两种语义）+ 运行时 `/internal/feign-ping` 复验通过 |
+| P2-5 | `/internal/ping` 的配置回显加 `link.core.internal.expose-config` 开关（默认 `false`） | 开启后回显正常、Feign 仍通 |
+| P2-6 | `docs/03` 新增「8.7 配置归属约定」+ 三条铁律 | 文档 |
 
 ---
 
