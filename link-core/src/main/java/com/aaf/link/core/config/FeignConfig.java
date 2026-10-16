@@ -4,7 +4,9 @@ import com.aaf.link.common.exception.BizException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.Logger;
+import feign.Request;
 import feign.Response;
+import feign.RetryableException;
 import feign.Retryer;
 import feign.Util;
 import feign.codec.ErrorDecoder;
@@ -22,8 +24,8 @@ import java.nio.charset.StandardCharsets;
  * <ul>
  *   <li>{@link Retryer}：Feign 默认是 {@code NEVER_RETRY}，要重试必须给 Bean。
  *       <b>只对幂等读操作安全</b>——本阶段只有探活读接口，故开启；写接口接入前必须重新评估（重复提交风险）</li>
- *   <li>{@link ErrorDecoder}：把下游的 {@code Result} 错误码转成本服务的 {@link BizException}，
- *       避免上层拿到裸的 FeignException 而丢失业务语义</li>
+ *   <li>{@link ErrorDecoder}：<b>错误分类决定重试语义</b>——5xx（瞬态故障）转 {@link RetryableException} 触发重试，
+ *       4xx（业务/参数错误）转 {@link BizException} 直接失败（重试无意义）</li>
  * </ul>
  *
  * <p>注意：重试与超时会叠加——总耗时上限 ≈ (connectTimeout + readTimeout) × maxAttempts，
@@ -42,30 +44,51 @@ public class FeignConfig {
     }
 
     /**
-     * 错误解码：统一转 BizException，并把下游的错误码/消息带出来
+     * 错误解码：按 HTTP 状态分类
+     * <ul>
+     *   <li>5xx → {@link RetryableException}（幂等读操作可安全重试，交给 Retryer）</li>
+     *   <li>4xx → {@link BizException}（带上下游错误码，不重试）</li>
+     * </ul>
      */
     @Bean
     public ErrorDecoder feignErrorDecoder(ObjectMapper objectMapper) {
         return (methodKey, response) -> {
-            String body = readBody(response);
-            String code = "A0500";
-            String message = "下游服务调用失败";
-            try {
-                if (body != null && !body.isBlank()) {
-                    JsonNode node = objectMapper.readTree(body);
-                    if (node.hasNonNull("code")) {
-                        code = node.get("code").asText();
-                    }
-                    if (node.hasNonNull("message")) {
-                        message = node.get("message").asText();
-                    }
-                }
-            } catch (Exception e) {
-                log.warn("解析下游错误响应失败，使用兜底错误码: method={}, status={}", methodKey, response.status());
+            int status = response.status();
+            String[] parsed = parseDownstreamError(objectMapper, response);
+            String code = parsed[0];
+            String message = parsed[1];
+
+            if (status >= 500) {
+                log.warn("下游 5xx，转 RetryableException 触发重试: method={}, status={}, code={}",
+                        methodKey, status, code);
+                Request.HttpMethod httpMethod = response.request() != null
+                        ? response.request().httpMethod() : Request.HttpMethod.GET;
+                return new RetryableException(status, message, httpMethod, (Long) null, response.request());
             }
-            log.warn("下游调用失败: method={}, status={}, downstreamCode={}", methodKey, response.status(), code);
+
+            log.warn("下游 4xx，按业务错误处理（不重试）: method={}, status={}, code={}", methodKey, status, code);
             return new BizException(code, message);
         };
+    }
+
+    private String[] parseDownstreamError(ObjectMapper objectMapper, Response response) {
+        String code = "A0500";
+        String message = "下游服务调用失败";
+        String body = readBody(response);
+        try {
+            if (body != null && !body.isBlank()) {
+                JsonNode node = objectMapper.readTree(body);
+                if (node.hasNonNull("code")) {
+                    code = node.get("code").asText();
+                }
+                if (node.hasNonNull("message")) {
+                    message = node.get("message").asText();
+                }
+            }
+        } catch (Exception e) {
+            log.warn("解析下游错误响应失败，使用兜底错误码: status={}", response.status());
+        }
+        return new String[]{code, message};
     }
 
     private String readBody(Response response) {

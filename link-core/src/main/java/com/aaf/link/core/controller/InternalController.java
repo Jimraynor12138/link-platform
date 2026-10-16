@@ -42,7 +42,14 @@ public class InternalController {
     private int port;
 
     /**
-     * 探活 + 配置回显
+     * 是否回显配置快照。默认 false —— 回显配置快照仅用于本地验证"动态刷新"，
+     * 生产环境不应暴露配置详情（即使是非敏感项）。
+     */
+    @Value("${link.core.internal.expose-config:false}")
+    private boolean exposeConfig;
+
+    /**
+     * 探活（+ 可选配置回显）
      */
     @GetMapping("/ping")
     public Result<Map<String, Object>> ping() {
@@ -50,11 +57,13 @@ public class InternalController {
         data.put("service", applicationName);
         data.put("instance", applicationName + ":" + port);
         data.put("timestamp", Instant.now().toString());
-        // 非敏感配置回显：可动态刷新的项（改 Nacos 后重新调用即可看到新值）
-        data.put("domain", properties.getDomain());
-        data.put("idGeneratorType", properties.getIdGeneratorType());
-        data.put("cacheTtlSeconds", properties.getCache().getTtlSeconds());
-        data.put("rateLimitPerWindow", properties.getRateLimit().getWriteLimitPerWindow());
+        if (exposeConfig) {
+            // 仅本地验证动态刷新时开启（link.core.internal.expose-config=true）
+            data.put("domain", properties.getDomain());
+            data.put("idGeneratorType", properties.getIdGeneratorType());
+            data.put("cacheTtlSeconds", properties.getCache().getTtlSeconds());
+            data.put("rateLimitPerWindow", properties.getRateLimit().getWriteLimitPerWindow());
+        }
         return Result.success(data);
     }
 

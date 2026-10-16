@@ -104,6 +104,10 @@ link:
         max-concurrent-db-queries: 20
         acquire-timeout-millis: 50
         degrade-window-seconds: 10
+    # 内部接口配置（P2 验证用）
+    internal:
+      # /internal/ping 是否回显配置快照：仅本地验证"动态刷新"用；生产必须保持 false
+      expose-config: true
     # 写接口限流：创建/修改/删除按客户端 IP 滑动窗口限流
     # 【注意】必须挂在 link.core 下（RateLimit 是 LinkCoreProperties 的嵌套字段），
     # 写成顶层 rate-limit 不会绑定，配置看起来"生效了"其实全用了默认值
