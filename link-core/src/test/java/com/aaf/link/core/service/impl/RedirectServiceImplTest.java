@@ -9,6 +9,7 @@ import com.aaf.link.common.exception.DegradedException;
 import com.aaf.link.core.config.LinkCoreProperties;
 import com.aaf.link.core.dao.LinkMapper;
 import com.aaf.link.core.bloom.ShortLinkBloomFilter;
+import com.aaf.link.core.common.ratelimit.RedirectAntiAbuseGuard;
 import com.aaf.link.core.dto.LinkCacheDTO;
 import com.aaf.link.core.entity.LinkDO;
 import com.aaf.link.core.service.CacheRefreshService;
@@ -71,6 +72,9 @@ class RedirectServiceImplTest {
     @Mock
     private DegradationGuard degradationGuard;
 
+    @Mock
+    private RedirectAntiAbuseGuard antiAbuseGuard;
+
     private RedirectServiceImpl redirectService;
     private ObjectMapper objectMapper;
     private LinkCoreProperties properties;
@@ -85,7 +89,8 @@ class RedirectServiceImplTest {
         objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
         redirectService = new RedirectServiceImpl(linkMapper, stringRedisTemplate, objectMapper, properties,
-                visitRecorder, bloomFilter, cacheRefreshService, rebuildLock, localLinkCache, degradationGuard);
+                visitRecorder, bloomFilter, cacheRefreshService, rebuildLock, localLinkCache, degradationGuard,
+                antiAbuseGuard);
         lenient().when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
         // 默认放行（等价 V2 行为）；需要验证拦截的用例单独打桩
         lenient().when(bloomFilter.mightContain(anyString())).thenReturn(true);
@@ -96,6 +101,8 @@ class RedirectServiceImplTest {
         // 默认正常态（空许可放行）；验证降级拒绝的用例单独打桩
         lenient().when(degradationGuard.tryAcquirePermit()).thenReturn(DegradationGuard.Permit.NOOP);
         lenient().when(degradationGuard.isDegraded()).thenReturn(false);
+        // 默认放行统计（等价 V3 行为）；需要验证防刷拦截的用例单独打桩
+        lenient().when(antiAbuseGuard.shouldRecord(anyString(), anyString())).thenReturn(true);
     }
 
     /** 统一的调用入口（V2 起签名含 IP/UA/Referer） */

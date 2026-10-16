@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.aaf.link.core.bloom.ShortLinkBloomFilter;
 import com.aaf.link.core.cache.CacheKeyBuilder;
+import com.aaf.link.core.common.ratelimit.RedirectAntiAbuseGuard;
 import com.aaf.link.core.cache.CacheRebuildLock;
 import com.aaf.link.core.cache.DegradationGuard;
 import com.aaf.link.core.cache.LinkCacheAssembler;
@@ -48,6 +49,7 @@ public class RedirectServiceImpl implements RedirectService {
     private final CacheRebuildLock rebuildLock;
     private final LocalLinkCache localLinkCache;
     private final DegradationGuard degradationGuard;
+    private final RedirectAntiAbuseGuard antiAbuseGuard;
 
     @Override
     public String resolveRedirectUrl(String code, String clientIp, String userAgent, String referer) {
@@ -197,8 +199,10 @@ public class RedirectServiceImpl implements RedirectService {
         }
         // stats-enabled=false 时跳过统计（压测对比 / 故障降级用）
         if (properties.isStatsEnabled()) {
-            // V2：默认只投递一条 MQ 消息就返回，统计处理不在跳转线程里做
-            visitRecorder.record(code, clientIp, userAgent, referer);
+            // V4 防刷：同一 IP 对同一短码窗口内只记一次，防统计污染（不影响跳转本身）
+            if (antiAbuseGuard.shouldRecord(code, clientIp)) {
+                visitRecorder.record(code, clientIp, userAgent, referer);
+            }
         }
         return dto.getOriginalUrl();
     }

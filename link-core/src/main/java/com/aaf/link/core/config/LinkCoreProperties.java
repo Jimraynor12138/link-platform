@@ -35,6 +35,11 @@ public class LinkCoreProperties {
     private boolean statsEnabled = true;
 
     /**
+     * 跳转链路防刷配置（V4）：防统计污染（不是跳转限流，跳转本身始终放行）
+     */
+    private AntiAbuse antiAbuse = new AntiAbuse();
+
+    /**
      * MQ 异步统计配置（V2）
      */
     private Mq mq = new Mq();
@@ -307,6 +312,22 @@ public class LinkCoreProperties {
 
         /** 单窗口内单客户端允许的写请求数 */
         private int writeLimitPerWindow = 120;
+    }
+
+    /**
+     * 跳转链路防刷配置（V4）。
+     *
+     * 语义：同一 IP 对同一短码在窗口内的**统计去重**（防刷 PV/UV），
+     * 与写接口限流（RateLimit）不同——跳转是核心读服务，只做"统计去重"而非"限流拒绝"。
+     */
+    @Data
+    public static class AntiAbuse {
+
+        /** 是否启用跳转防刷 */
+        private boolean enabled = true;
+
+        /** 同一 IP 对同一短码的统计去重窗口（秒） */
+        private int windowSeconds = 1;
     }
 
     /**
