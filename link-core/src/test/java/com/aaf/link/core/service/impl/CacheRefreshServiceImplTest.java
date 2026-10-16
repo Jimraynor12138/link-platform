@@ -80,7 +80,7 @@ class CacheRefreshServiceImplTest {
 
     @Test
     void refreshWritesCacheWithLogicalExpireAt() throws Exception {
-        when(linkMapper.selectOne(any())).thenReturn(link());
+        when(linkMapper.selectByCodeAndDomain(any(), any())).thenReturn(link());
 
         refreshService.refreshAsync("abc123");
 
@@ -106,7 +106,7 @@ class CacheRefreshServiceImplTest {
 
     @Test
     void refreshWritesNullMarkerWhenLinkDeleted() {
-        when(linkMapper.selectOne(any())).thenReturn(null);
+        when(linkMapper.selectByCodeAndDomain(any(), any())).thenReturn(null);
 
         refreshService.refreshAsync("abc123");
 
@@ -118,7 +118,7 @@ class CacheRefreshServiceImplTest {
 
     @Test
     void refreshFailureKeepsStaleValueAndReleasesLock() {
-        when(linkMapper.selectOne(any())).thenThrow(new RuntimeException("db down"));
+        when(linkMapper.selectByCodeAndDomain(any(), any())).thenThrow(new RuntimeException("db down"));
 
         assertDoesNotThrow(() -> refreshService.refreshAsync("abc123"));
 

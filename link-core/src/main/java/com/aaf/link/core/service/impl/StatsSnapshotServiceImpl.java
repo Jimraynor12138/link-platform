@@ -85,13 +85,13 @@ public class StatsSnapshotServiceImpl implements StatsSnapshotService {
         int limit = Math.min(batch.size(), properties.getStatsPersist().getMaxBatchSize());
         List<DirtyKey> toFlush = batch.subList(0, limit);
 
-        // 批量解析 link_id：一次 IN 查询代替每个短码一次查询
-        Map<String, Long> linkIdMap = resolveLinkIds(toFlush.stream().map(DirtyKey::code).distinct().toList());
+        // 批量解析短链（含租户/渠道）：一次 IN 查询代替每个短码一次查询
+        Map<String, LinkDO> linkMap = resolveLinks(toFlush.stream().map(DirtyKey::code).distinct().toList());
 
         int success = 0;
         for (DirtyKey key : toFlush) {
             try {
-                flushOne(key, linkIdMap);
+                flushOne(key, linkMap);
             } catch (Exception e) {
                 // 单条失败不影响其他短码；保留脏标记，下一轮重试
                 log.error("统计快照落库失败: code={}, date={}", key.code(), key.date(), e);
@@ -164,7 +164,7 @@ public class StatsSnapshotServiceImpl implements StatsSnapshotService {
     /**
      * 落库单个短码某日的快照；短链已不存在或统计 key 已过期时直接返回（无需重试）
      */
-    private void flushOne(DirtyKey dirtyKey, Map<String, Long> linkIdMap) throws Exception {
+    private void flushOne(DirtyKey dirtyKey, Map<String, LinkDO> linkMap) throws Exception {
         String code = dirtyKey.code();
         String date = dirtyKey.date().format(DATE_FORMATTER);
 
@@ -174,15 +174,17 @@ public class StatsSnapshotServiceImpl implements StatsSnapshotService {
             return;
         }
 
-        Long linkId = linkIdMap.get(code);
-        if (linkId == null) {
+        LinkDO link = linkMap.get(code);
+        if (link == null) {
             log.warn("短链已不存在，跳过统计落库: code={}", code);
             return;
         }
 
         LinkStatsDO stats = new LinkStatsDO();
-        stats.setLinkId(linkId);
+        stats.setLinkId(link.getId());
+        stats.setTenantId(link.getTenantId());
         stats.setCode(code);
+        stats.setChannel(link.getChannel());
         stats.setDate(dirtyKey.date());
         stats.setPv(Long.parseLong(pvValue));
 
@@ -204,19 +206,16 @@ public class StatsSnapshotServiceImpl implements StatsSnapshotService {
     }
 
     /**
-     * 批量由短码解析短链 ID：一次 IN 查询代替「每个短码一次查询」
+     * 批量由短码解析短链实体（含租户/渠道）：一次 IN 查询代替「每个短码一次查询」
      */
-    private Map<String, Long> resolveLinkIds(List<String> codes) {
+    private Map<String, LinkDO> resolveLinks(List<String> codes) {
         if (codes.isEmpty()) {
             return Map.of();
         }
-        List<LinkDO> links = linkMapper.selectList(new QueryWrapper<LinkDO>()
-                .select("id", "code")
-                .eq("domain", properties.getDomain())
-                .in("code", codes));
-        Map<String, Long> result = new HashMap<>(links.size());
+        List<LinkDO> links = linkMapper.selectByCodeIn(properties.getDomain(), codes);
+        Map<String, LinkDO> result = new HashMap<>(links.size());
         for (LinkDO link : links) {
-            result.put(link.getCode(), link.getId());
+            result.put(link.getCode(), link);
         }
         return result;
     }

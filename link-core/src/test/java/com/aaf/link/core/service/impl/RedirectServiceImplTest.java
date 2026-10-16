@@ -134,7 +134,7 @@ class RedirectServiceImplTest {
         assertNull(resolve("nope"));
 
         verify(valueOperations, never()).get(anyString());
-        verify(linkMapper, never()).selectOne(any());
+        verify(linkMapper, never()).selectByCodeAndDomain(any(), any());
         verify(visitRecorder, never()).record(anyString(), anyString(), anyString(), any());
     }
 
@@ -142,14 +142,14 @@ class RedirectServiceImplTest {
     void cacheHitReturnsUrlWithoutDb() throws Exception {
         when(valueOperations.get(KEY)).thenReturn(objectMapper.writeValueAsString(cacheDTO(0, 1, null)));
         assertEquals("https://example.com/target", resolve("abc123"));
-        verify(linkMapper, never()).selectOne(any());
+        verify(linkMapper, never()).selectByCodeAndDomain(any(), any());
     }
 
     @Test
     void cacheHitNullMarkerReturnsNullWithoutDb() {
         when(valueOperations.get(KEY)).thenReturn(CacheKeyBuilder.NULL_MARKER);
         assertNull(resolve("abc123"));
-        verify(linkMapper, never()).selectOne(any());
+        verify(linkMapper, never()).selectByCodeAndDomain(any(), any());
     }
 
     @Test
@@ -168,7 +168,7 @@ class RedirectServiceImplTest {
     @Test
     void cacheMissQueriesDbAndFillsCache() {
         when(valueOperations.get(KEY)).thenReturn(null);
-        when(linkMapper.selectOne(any())).thenReturn(linkDO(0, 1, null));
+        when(linkMapper.selectByCodeAndDomain(any(), any())).thenReturn(linkDO(0, 1, null));
         assertEquals("https://example.com/target", resolve("abc123"));
         verify(valueOperations).set(eq(KEY), anyString(), any(Duration.class));
     }
@@ -176,7 +176,7 @@ class RedirectServiceImplTest {
     @Test
     void cacheMissNotFoundWritesNullMarker() {
         when(valueOperations.get(KEY)).thenReturn(null);
-        when(linkMapper.selectOne(any())).thenReturn(null);
+        when(linkMapper.selectByCodeAndDomain(any(), any())).thenReturn(null);
         assertNull(resolve("abc123"));
         verify(valueOperations).set(eq(KEY), eq(CacheKeyBuilder.NULL_MARKER), eq(Duration.ofSeconds(60)));
     }
@@ -184,7 +184,7 @@ class RedirectServiceImplTest {
     @Test
     void cacheMissDisabledLinkStillCachesSnapshot() {
         when(valueOperations.get(KEY)).thenReturn(null);
-        when(linkMapper.selectOne(any())).thenReturn(linkDO(1, 1, null));
+        when(linkMapper.selectByCodeAndDomain(any(), any())).thenReturn(linkDO(1, 1, null));
         assertNull(resolve("abc123"));
         verify(valueOperations).set(eq(KEY), anyString(), any(Duration.class));
     }
@@ -192,14 +192,14 @@ class RedirectServiceImplTest {
     @Test
     void redisReadFailureDegradesToDb() {
         when(valueOperations.get(KEY)).thenThrow(new RuntimeException("redis down"));
-        when(linkMapper.selectOne(any())).thenReturn(linkDO(0, 1, null));
+        when(linkMapper.selectByCodeAndDomain(any(), any())).thenReturn(linkDO(0, 1, null));
         assertEquals("https://example.com/target", resolve("abc123"));
     }
 
     @Test
     void redisWriteFailureDoesNotBreakRedirect() {
         when(valueOperations.get(KEY)).thenReturn(null);
-        when(linkMapper.selectOne(any())).thenReturn(linkDO(0, 1, null));
+        when(linkMapper.selectByCodeAndDomain(any(), any())).thenReturn(linkDO(0, 1, null));
         // set(key, value, Duration) 是 void 方法，需用 doThrow 打桩
         doThrow(new RuntimeException("redis write down"))
                 .when(valueOperations).set(anyString(), anyString(), any(Duration.class));
@@ -210,7 +210,7 @@ class RedirectServiceImplTest {
     void corruptCacheValueFallsBackToDb() {
         // 缓存值损坏（非法 JSON）应回源查询而非直接失败
         when(valueOperations.get(KEY)).thenReturn("{broken json");
-        when(linkMapper.selectOne(any())).thenReturn(linkDO(0, 1, null));
+        when(linkMapper.selectByCodeAndDomain(any(), any())).thenReturn(linkDO(0, 1, null));
         assertEquals("https://example.com/target", resolve("abc123"));
     }
 
@@ -239,7 +239,7 @@ class RedirectServiceImplTest {
     void cacheDisabledSkipsRedisAndQueriesDb() {
         // 压测基线场景：cache.enabled=false 时完全跳过 Redis，等价 V0 行为
         properties.getCache().setEnabled(false);
-        when(linkMapper.selectOne(any())).thenReturn(linkDO(0, 1, null));
+        when(linkMapper.selectByCodeAndDomain(any(), any())).thenReturn(linkDO(0, 1, null));
 
         assertEquals("https://example.com/target", resolve("abc123"));
 
@@ -323,7 +323,7 @@ class RedirectServiceImplTest {
 
         assertEquals("https://example.com/target", resolve("abc123"));
 
-        verify(linkMapper, never()).selectOne(any());
+        verify(linkMapper, never()).selectByCodeAndDomain(any(), any());
         // 跟车者不能释放 leader 的锁
         verify(rebuildLock, never()).unlock(anyString());
     }
@@ -331,7 +331,7 @@ class RedirectServiceImplTest {
     @Test
     void mutexRebuildLeaderFillsCacheAndUnlocks() {
         when(valueOperations.get(KEY)).thenReturn(null);
-        when(linkMapper.selectOne(any())).thenReturn(linkDO(0, 1, null));
+        when(linkMapper.selectByCodeAndDomain(any(), any())).thenReturn(linkDO(0, 1, null));
 
         assertEquals("https://example.com/target", resolve("abc123"));
 
@@ -344,7 +344,7 @@ class RedirectServiceImplTest {
         // leader 迟迟未回填（慢/异常）：跟车者自行回源兜底，但不再写缓存，避免写放大
         when(rebuildLock.tryLock("abc123")).thenReturn(false);
         when(valueOperations.get(KEY)).thenReturn(null);
-        when(linkMapper.selectOne(any())).thenReturn(linkDO(0, 1, null));
+        when(linkMapper.selectByCodeAndDomain(any(), any())).thenReturn(linkDO(0, 1, null));
 
         assertEquals("https://example.com/target", resolve("abc123"));
 
@@ -356,7 +356,7 @@ class RedirectServiceImplTest {
     void mutexRebuildLeaderReleasesLockOnFailure() {
         // leader 回源抛异常时也必须解锁，否则同 key 在锁 TTL 内无法重建
         when(valueOperations.get(KEY)).thenReturn(null);
-        when(linkMapper.selectOne(any())).thenThrow(new RuntimeException("db down"));
+        when(linkMapper.selectByCodeAndDomain(any(), any())).thenThrow(new RuntimeException("db down"));
 
         assertThrows(RuntimeException.class, () -> resolve("abc123"));
 
@@ -375,7 +375,7 @@ class RedirectServiceImplTest {
         assertEquals("https://example.com/target", resolve("abc123"));
 
         verify(stringRedisTemplate, never()).opsForValue();
-        verify(linkMapper, never()).selectOne(any());
+        verify(linkMapper, never()).selectByCodeAndDomain(any(), any());
     }
 
     @Test
@@ -400,12 +400,12 @@ class RedirectServiceImplTest {
     @Test
     void redisFailureMarksDegradedAndFallsBackToDb() {
         when(valueOperations.get(KEY)).thenThrow(new RuntimeException("redis down"));
-        when(linkMapper.selectOne(any())).thenReturn(linkDO(0, 1, null));
+        when(linkMapper.selectByCodeAndDomain(any(), any())).thenReturn(linkDO(0, 1, null));
 
         assertEquals("https://example.com/target", resolve("abc123"));
 
         verify(degradationGuard).markDegraded(anyString());
-        verify(linkMapper).selectOne(any());
+        verify(linkMapper).selectByCodeAndDomain(any(), any());
     }
 
     @Test
@@ -425,7 +425,7 @@ class RedirectServiceImplTest {
 
         assertThrows(DegradedException.class, () -> resolve("abc123"));
 
-        verify(linkMapper, never()).selectOne(any());
+        verify(linkMapper, never()).selectByCodeAndDomain(any(), any());
         // 抢到的重建锁必须释放，否则同 key 在锁 TTL 内无法重建
         verify(rebuildLock).unlock("abc123");
     }
@@ -436,10 +436,10 @@ class RedirectServiceImplTest {
         when(valueOperations.get(KEY)).thenReturn(null);
         when(degradationGuard.tryAcquirePermit()).thenReturn(() -> {
         });
-        when(linkMapper.selectOne(any())).thenReturn(linkDO(0, 1, null));
+        when(linkMapper.selectByCodeAndDomain(any(), any())).thenReturn(linkDO(0, 1, null));
 
         assertEquals("https://example.com/target", resolve("abc123"));
 
-        verify(linkMapper).selectOne(any());
+        verify(linkMapper).selectByCodeAndDomain(any(), any());
     }
 }

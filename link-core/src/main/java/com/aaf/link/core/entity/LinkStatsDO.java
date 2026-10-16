@@ -21,7 +21,13 @@ public class LinkStatsDO {
 
     private Long linkId;
 
+    /** 所属租户（快照落库时从 t_link 冗余写入，供租户级统计查询） */
+    private Long tenantId;
+
     private String code;
+
+    /** 渠道标识（快照落库时从 t_link 冗余写入，供渠道维度聚合） */
+    private String channel;
 
     /** 统计日期 */
     private LocalDate date;

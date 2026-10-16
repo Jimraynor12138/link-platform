@@ -85,7 +85,7 @@ class StatsSnapshotServiceImplTest {
         LinkDO link = new LinkDO();
         link.setId(7L);
         link.setCode(CODE);
-        when(linkMapper.selectList(any(QueryWrapper.class))).thenReturn(List.of(link));
+        when(linkMapper.selectByCodeIn(any(), any())).thenReturn(List.of(link));
     }
 
     @Test
@@ -135,7 +135,7 @@ class StatsSnapshotServiceImplTest {
     void flushSkipsWhenPvKeyExpired() {
         // 注：link_id 采用整批解析（一次 IN 查询），即使本批全部无数据也会查一次，属可接受开销
         when(valueOperations.get(CacheKeyBuilder.buildPvKey(TODAY.format(FMT), CODE))).thenReturn(null);
-        when(linkMapper.selectList(any(QueryWrapper.class))).thenReturn(List.of());
+        when(linkMapper.selectByCodeIn(any(), any())).thenReturn(List.of());
 
         snapshotService.markDirty(CODE, TODAY);
         snapshotService.flush();
@@ -147,7 +147,7 @@ class StatsSnapshotServiceImplTest {
     @Test
     void flushSkipsWhenLinkDeleted() {
         when(valueOperations.get(CacheKeyBuilder.buildPvKey(TODAY.format(FMT), CODE))).thenReturn("11");
-        when(linkMapper.selectList(any(QueryWrapper.class))).thenReturn(List.of());
+        when(linkMapper.selectByCodeIn(any(), any())).thenReturn(List.of());
 
         snapshotService.markDirty(CODE, TODAY);
         snapshotService.flush();

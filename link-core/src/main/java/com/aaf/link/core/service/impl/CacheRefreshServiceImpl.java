@@ -97,10 +97,7 @@ public class CacheRefreshServiceImpl implements CacheRefreshService {
         }
         try {
             String key = CacheKeyBuilder.buildLinkKey(properties.getDomain(), code);
-            LinkDO link = linkMapper.selectOne(new QueryWrapper<LinkDO>()
-                    .eq("code", code)
-                    .eq("domain", properties.getDomain())
-                    .last("LIMIT 1"));
+            LinkDO link = linkMapper.selectByCodeAndDomain(code, properties.getDomain());
             if (link == null) {
                 // 短链已被删除：写空值标记，让后续请求快速 404（而不是每次都回源）；
                 // 同时清掉本实例 L1，否则本地旧值会继续把已删除的短链跳出去

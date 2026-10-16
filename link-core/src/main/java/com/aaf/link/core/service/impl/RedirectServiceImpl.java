@@ -246,11 +246,8 @@ public class RedirectServiceImpl implements RedirectService {
      * 根据短码查询短链实体
      */
     private LinkDO findByCode(String code) {
-        // 字符串列名（而非 Lambda），保证单元测试无需初始化 MP 元数据缓存
-        return linkMapper.selectOne(new QueryWrapper<LinkDO>()
-                .eq("code", code)
-                .eq("domain", properties.getDomain())
-                .last("LIMIT 1"));
+        // 跳转回源按 code 查：豁免多租户过滤（访客无租户上下文，短码全局唯一）
+        return linkMapper.selectByCodeAndDomain(code, properties.getDomain());
     }
 
     /**

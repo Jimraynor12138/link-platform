@@ -23,6 +23,10 @@ public class LinkCreateReqDTO {
     @Size(max = 32, message = "分组标识长度不能超过 32")
     private String gid;
 
+    /** 渠道标识（可选，空=无渠道，用于点击归因） */
+    @Size(max = 32, message = "渠道标识长度不能超过 32")
+    private String channel;
+
     /** 有效期类型：1 永久，2 自定义 */
     @jakarta.validation.constraints.NotNull(message = "有效期类型不能为空")
     private Integer validType;

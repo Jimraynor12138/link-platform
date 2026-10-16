@@ -1,5 +1,6 @@
 package com.aaf.link.core.dao;
 
+import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.aaf.link.core.entity.LinkStatsDO;
 import org.apache.ibatis.annotations.Insert;
@@ -27,11 +28,12 @@ public interface LinkStatsMapper extends BaseMapper<LinkStatsDO> {
      * 3. MySQL 的 ON DUPLICATE KEY UPDATE 赋值按「从左到右」生效，因此把 pv 放在最后赋值，
      *    保证前面的 IF 条件读到的都是更新前的旧 pv。
      */
+    @InterceptorIgnore(tenantLine = "true")
     @Insert("""
             INSERT INTO t_link_stats
-                (link_id, code, `date`, pv, uv, ip_cnt, default_cnt, referer_stats, device_stats)
+                (link_id, tenant_id, code, channel, `date`, pv, uv, ip_cnt, default_cnt, referer_stats, device_stats)
             VALUES
-                (#{stats.linkId}, #{stats.code}, #{stats.date}, #{stats.pv}, #{stats.uv},
+                (#{stats.linkId}, #{stats.tenantId}, #{stats.code}, #{stats.channel}, #{stats.date}, #{stats.pv}, #{stats.uv},
                  #{stats.ipCnt}, #{stats.defaultCnt}, #{stats.refererStats}, #{stats.deviceStats})
             AS new
             ON DUPLICATE KEY UPDATE

@@ -21,6 +21,9 @@ public class LinkDO {
     @TableId(type = IdType.INPUT)
     private Long id;
 
+    /** 所属租户：0=平台级 >0=租户级（多租户拦截器在 INSERT 时自动填充） */
+    private Long tenantId;
+
     /** 短码（Base62 编码） */
     private String code;
 
@@ -32,6 +35,9 @@ public class LinkDO {
 
     /** 分组标识 */
     private String gid;
+
+    /** 渠道标识（可选，空=无渠道，用于点击归因） */
+    private String channel;
 
     /** 启用状态：0 启用，1 停用 */
     private Integer enableStatus;

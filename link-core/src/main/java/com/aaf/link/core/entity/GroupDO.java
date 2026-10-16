@@ -18,6 +18,9 @@ public class GroupDO {
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    /** 所属租户：0=平台级 >0=租户级（多租户拦截器在 INSERT 时自动填充） */
+    private Long tenantId;
+
     /** 分组标识（随机生成，业务侧唯一键） */
     private String gid;
 

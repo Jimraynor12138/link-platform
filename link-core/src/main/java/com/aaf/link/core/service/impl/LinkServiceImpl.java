@@ -100,6 +100,8 @@ public class LinkServiceImpl implements LinkService {
         link.setDomain(properties.getDomain());
         link.setOriginalUrl(reqDTO.getOriginalUrl());
         link.setGid(reqDTO.getGid() == null || reqDTO.getGid().isBlank() ? DEFAULT_GID : reqDTO.getGid());
+        // 渠道：可选，空串表示无渠道；tenant_id 由多租户拦截器在 INSERT 时自动填充（见 CoreTenantLineHandler）
+        link.setChannel(reqDTO.getChannel() == null || reqDTO.getChannel().isBlank() ? "" : reqDTO.getChannel());
         link.setEnableStatus(0);
         link.setValidType(reqDTO.getValidType());
         link.setValidDate(reqDTO.getValidType() == 2 ? reqDTO.getValidDate() : null);
