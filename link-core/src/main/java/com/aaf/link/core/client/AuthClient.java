@@ -18,7 +18,9 @@ import java.util.Map;
  * <p>{@code configuration = IdempotentReadFeignConfig.class}：仅本客户端开启"5xx 重试"。
  * 本接口是**幂等读**，重试安全；将来若在此客户端加写接口，必须把它移到不重试的配置下。
  */
-@FeignClient(name = "link-auth", path = "/internal", configuration = IdempotentReadFeignConfig.class)
+@FeignClient(name = "link-auth", path = "/internal",
+        configuration = IdempotentReadFeignConfig.class,
+        fallback = AuthClientFallback.class)
 public interface AuthClient {
 
     /**

@@ -9,6 +9,10 @@ spring:
         # 容错模式：SCA 默认 fail-fast=true，Nacos 不可用时"注册失败"会导致服务起不来。
         # 关闭后注册失败只告警，服务照常启动（本地开发不必先起 Docker）
         fail-fast: false
+    sentinel:
+      transport:
+        # Sentinel Dashboard 地址（本地 8858；Dashboard 未启动时不影响服务运行）
+        dashboard: ${SENTINEL_DASHBOARD_ADDR:localhost:8858}
     gateway:
       # 不按服务名自动生成路由，显式配置更可控
       discovery:

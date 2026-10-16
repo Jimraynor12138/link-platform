@@ -1,5 +1,7 @@
 package com.aaf.link.core.controller;
 
+import com.alibaba.csp.sentinel.annotation.SentinelResource;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.aaf.link.common.result.Result;
 import com.aaf.link.core.dto.LinkCreateReqDTO;
@@ -31,9 +33,18 @@ public class LinkController {
     private final LinkService linkService;
 
     @Operation(summary = "创建短链")
+    @SentinelResource(value = "createLink", blockHandler = "createLinkBlock")
     @PostMapping("/create")
     public Result<LinkRespDTO> create(@RequestBody @Valid LinkCreateReqDTO reqDTO) {
         return Result.success(linkService.createLink(reqDTO));
+    }
+
+    /**
+     * 创建短链触发限流时的降级响应（Sentinel blockHandler）。
+     * 参数与返回值必须与原方法一致，并额外加一个 {@link BlockException}。
+     */
+    public Result<LinkRespDTO> createLinkBlock(LinkCreateReqDTO reqDTO, BlockException ex) {
+        return Result.failure("A0429", "创建短链触发限流，请稍后重试");
     }
 
     @Operation(summary = "修改短链")

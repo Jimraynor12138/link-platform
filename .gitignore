@@ -36,3 +36,6 @@ app.pid
 
 ### 工具目录 ###
 .codebuddy/
+
+### 部署中间件（二进制 jar 不入库，获取方式见 deploy/sentinel/README.md）###
+deploy/sentinel/*.jar

@@ -55,6 +55,24 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
+        <!-- Sentinel 网关入口限流 -->
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-alibaba-sentinel-gateway</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.csp</groupId>
+            <artifactId>sentinel-spring-cloud-gateway-adapter</artifactId>
+        </dependency>
+        <!-- 踩坑：SCA 的 spring-cloud-alibaba-sentinel-datasource 把 sentinel-datasource-extension
+             标记为 <optional>，不会传递引入；而它的自动配置引用了
+             com.alibaba.csp.sentinel.datasource.Converter（就在 sentinel-datasource-extension 里），
+             导致运行时 ClassNotFoundException。版本与 SCA BOM 管理的 sentinel 保持一致（1.8.8） -->
+        <dependency>
+            <groupId>com.alibaba.csp</groupId>
+            <artifactId>sentinel-datasource-extension</artifactId>
+            <version>1.8.8</version>
+        </dependency>
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
