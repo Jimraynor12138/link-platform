@@ -20,6 +20,26 @@
             <groupId>com.aaf</groupId>
             <artifactId>link-common</artifactId>
         </dependency>
+        <!-- Nacos 服务注册 + 配置中心（版本由 spring-cloud-alibaba-dependencies BOM 管理） -->
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
+        </dependency>
+        <!-- OpenFeign 服务间调用 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-openfeign</artifactId>
+        </dependency>
+        <!-- 按服务名调用必须显式引入 loadbalancer，否则报
+             "No Feign Client for loadBalancing defined" -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+        </dependency>
 
         <!-- Web -->
         <dependency>

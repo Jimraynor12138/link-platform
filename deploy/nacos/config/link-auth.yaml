@@ -1,0 +1,36 @@
+# ============================================================
+# Nacos 配置：link-auth（DataId = link-auth.yaml, group = DEFAULT_GROUP）
+#
+# 来源：V2（P2）从 link-auth/src/main/resources/application.yml 迁出
+# 发布方式：deploy/nacos/import-configs.ps1（调 Nacos OpenAPI）
+#
+# 敏感项说明：JWT 密钥【不在这里】——
+#   application.yml 里写的是 ${LINK_AUTH_JWT_SECRET}（无默认值），
+#   生产通过环境变量注入、本地开发写入 application-dev.yml（已 gitignore）。
+#   配置中心本身也需要鉴权，学习项目把密钥再挪一层收益低、风险高。
+# ============================================================
+link:
+  auth:
+    jwt:
+      # 【刻意不放 secret】签名密钥属敏感项，不进配置中心：
+      #   生产用环境变量 LINK_AUTH_JWT_SECRET 注入；本地开发写在 application-dev.yml（已 gitignore）。
+      #   若把 ${LINK_AUTH_JWT_SECRET} 放这里，配置中心的优先级可能盖掉本地 dev 密钥，导致本地起不来。
+      # Access Token 有效期（秒）：30 分钟
+      expiration: 1800
+      # Refresh Token 有效期（秒）：7 天
+      refresh-expiration: 604800
+      # 令牌请求头与前缀
+      token-header: Authorization
+      token-head: "Bearer "
+    # 免认证白名单
+    # 注意：/auth/refresh 必须免认证 —— 刷新的前提正是 Access Token 已过期
+    permit-all:
+      - /auth/login
+      - /auth/refresh
+      - /doc.html
+      - /swagger-ui.html
+      - /swagger-ui/**
+      - /v3/api-docs/**
+      - /webjars/**
+      # P2 临时放行：Feign 内部调用（P3 网关上线后内部接口不应对外暴露，应改内网隔离或内部鉴权）
+      - /internal/**

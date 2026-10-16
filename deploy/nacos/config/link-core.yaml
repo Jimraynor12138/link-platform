@@ -1,0 +1,113 @@
+# ============================================================
+# Nacos 配置：link-core（DataId = link-core.yaml, group = DEFAULT_GROUP）
+#
+# 来源：V2（P2）从 link-core/src/main/resources/application.yml 迁出
+# 发布方式：deploy/nacos/import-configs.ps1（调 Nacos OpenAPI），不要只手工在控制台点
+#
+# 哪些能"动态刷新"，哪些不能（重要，面试常问）：
+#   能：@ConfigurationProperties 绑定的字段（如 cache.ttl-seconds、rate-limit.*），发布后自动 rebind
+#   不能：@ConditionalOnProperty 驱动的开关（id-generator-type、mq.enabled）—— Bean 装配在启动时决定，
+#         改了要重启才生效（它们仍然适合放配置中心，因为"改配置 → 重启"比"改代码 → 重新打包"轻）
+# ============================================================
+link:
+  core:
+    # 短链域名（V0 简化：全局统一域名，不做多域名路由）
+    domain: localhost:8082
+    # 发号器类型：auto（数据库自增）/ redis / segment / snowflake，可配置切换
+    # 【注意】由 @ConditionalOnProperty 驱动，不随配置中心动态刷新，改动需重启
+    id-generator-type: auto
+    # 访问统计开关：关闭后跳转不再写统计
+    stats-enabled: true
+    # MQ 异步统计
+    mq:
+      # false 时退化为同步统计（降级路径，也是压测对比的对照组）
+      # 【注意】@ConditionalOnProperty 驱动，改动需重启
+      enabled: true
+      exchange: link.visit.exchange
+      queue: link.visit.queue
+      routing-key: link.visit
+      dead-letter-exchange: link.visit.dlx
+      dead-letter-queue: link.visit.dlq
+      # 消费幂等 key 保留时间（秒）= 允许的重投窗口，不要取大值
+      idempotent-ttl-seconds: 60
+    # 号段模式发号：一次申请一段号放内存里发，双 buffer 异步预取
+    segment:
+      # t_segment 的业务标识（一个业务一行）
+      biz-tag: short-link
+      # 号段长度：越大 DB 压力越小、重启浪费越多
+      step: 1000
+      # 当前段剩余不足该百分比时异步预取下一段
+      prefetch-remaining-percent: 10
+      alloc-retry-times: 3
+      alloc-retry-interval-millis: 50
+    # 雪花算法发号：完全本地生成，需处理时钟回拨与机器 ID 分配
+    snowflake:
+      # 机器 ID（0~1023）：多实例必须互不相同，生产由配置中心/K8s 序号注入
+      worker-id: 0
+      # 自定义纪元（2024-01-01T00:00:00Z）：比 1970 起算能显著缩小 ID 数值 → 短码更短
+      epoch-millis: 1704067200000
+      # 允许的时钟回拨上限（毫秒）：超过则拒绝发号（宁可创建失败也不出重复 ID）
+      max-backward-millis: 5
+    # 布隆过滤器（防缓存穿透；本地位图 + 缺失回查确认）
+    bloom:
+      enabled: true
+      # 预计短码总量（估小了误判率会上升）
+      capacity: 1000000
+      # 目标误判率：0.01 表示约 1% 的不存在短码会被放行到缓存/DB
+      false-positive-rate: 0.01
+      key: link:core:bloom:codes
+      init-flag-key: link:core:bloom:init
+      warmup-batch-size: 1000
+      # 位图整块加载进本进程内存（约 1.1MB），跳转查询零 Redis RTT
+      verify-on-local-miss: true
+    # 统计快照落库：脏标记 + 定时批量 upsert
+    stats-persist:
+      # 毫秒；@Scheduled 只认毫秒数字符串，写 "2s" 会启动失败
+      flush-interval-ms: 2000
+      max-batch-size: 1000
+      # 定时兜底扫描开关（自愈重启丢脏标记导致的漏写）
+      rescan-enabled: true
+    # 缓存配置
+    cache:
+      # 缓存总开关：false 时跳转直查 DB（等价 V0，用于压测基线与降级）
+      enabled: true
+      # 正常短链缓存基础 TTL（秒）——**可动态刷新**，适合做配置中心演示
+      ttl-seconds: 1800
+      # TTL 随机抖动上限（秒）：防止大量 key 同时过期（雪崩）
+      jitter-seconds: 600
+      # 空值缓存 TTL（秒）：防穿透
+      null-ttl-seconds: 60
+      # 统计 key TTL（秒）：默认 7 天
+      stats-ttl-seconds: 604800
+      # 防击穿
+      anti-breakdown:
+        # 逻辑过期 + 异步刷新：命中但逻辑过期时先返回旧值，后台异步重建
+        logical-expire-enabled: true
+        # 逻辑过期时长（秒）：应远小于物理 TTL
+        logical-expire-seconds: 300
+        # 互斥重建：缓存未命中时只放一个请求回源
+        mutex-rebuild-enabled: true
+        mutex-wait-millis: 200
+        mutex-wait-step-millis: 20
+        refresh-pool-size: 2
+        refresh-queue-capacity: 1000
+      # 本地一级缓存（Caffeine）
+      local:
+        enabled: true
+        max-size: 10000
+        # 本地 TTL 必须远小于 Redis TTL：多实例失效消息丢失时不一致最多存活这么久
+        ttl-seconds: 30
+        record-stats: true
+      # 降级保护：Redis 故障时给回源 DB 加并发闸门（防雪崩）
+      degradation:
+        enabled: true
+        max-concurrent-db-queries: 20
+        acquire-timeout-millis: 50
+        degrade-window-seconds: 10
+    # 写接口限流：创建/修改/删除按客户端 IP 滑动窗口限流
+    # 【注意】必须挂在 link.core 下（RateLimit 是 LinkCoreProperties 的嵌套字段），
+    # 写成顶层 rate-limit 不会绑定，配置看起来"生效了"其实全用了默认值
+    rate-limit:
+      enabled: true
+      window-seconds: 60
+      write-limit-per-window: 120

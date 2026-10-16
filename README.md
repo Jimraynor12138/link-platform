@@ -23,8 +23,32 @@ MyBatis-Plus · MySQL 8 · Redis · RabbitMQ（可切换 Kafka）· Redisson · 
 ## 状态
 
 - ✅ V0（P0）：多模块骨架 + 短链核心迁移 + 公共类上移（198 单测）
-- ✅ V1（P1）：包名/配置前缀规范化（`com.aaf.link.*` / `link.core.*`）+ link-auth 认证链路与租户模型（双 Token / 刷新轮换 / 登出撤销 / 多租户越权防护；core 198 + auth 23 单测、E2E 9 步）
-- ⏳ V2（P2）：Nacos 注册与配置中心 + OpenFeign 服务间调用
+- ✅ V1（P1）：包名/配置前缀规范化（`com.aaf.link.*` / `link.core.*`）+ link-auth 认证链路与租户模型（双 Token / 刷新轮换 / 登出撤销 / 多租户越权防护；core 198 + auth 28 单测、E2E 9 步）
+- ✅ V2（P2）：前置技术债清理 + Nacos 注册与配置中心 + OpenFeign 服务间调用（配置动态刷新、容错模式；core 198 + auth 28 单测、E2E 7 项 + 容错 2 场景）
+- ⏳ V3（P3）：Gateway 路由/鉴权/限流 + Sentinel
+
+## 本地启动
+
+前置：MySQL（库 `link_platform`）、Redis（db 1）、Nacos（Docker）。
+
+```bash
+# 1) 起 Nacos（注册中心 + 配置中心）
+docker compose -f deploy/nacos/docker-compose.yml up -d
+
+# 2) 发布配置（首次，或改动 deploy/nacos/config/ 之后）
+powershell -NoProfile -ExecutionPolicy Bypass -File deploy\nacos\import-configs.ps1
+
+# 3) 构建并启动服务
+mvn clean install -DskipTests
+java -Dfile.encoding=UTF-8 -jar link-auth/target/link-auth-0.1.0-SNAPSHOT.jar --spring.profiles.active=dev
+java -Dfile.encoding=UTF-8 -jar link-core/target/link-core-0.1.0-SNAPSHOT.jar --spring.profiles.active=dev
+```
+
+> **`-Dfile.encoding=UTF-8` 不能省**：JDK 17 + 中文 Windows 的默认字符集是 GBK，
+> 会导致 Nacos 上的中文配置解析失败（`MalformedInputException`），配置静默回退默认值。
+>
+> **容错模式**：Nacos 未启动时服务仍能启动（注册失败仅告警），但拿不到远端配置；
+> 首次运行请先复制 `application-dev.example.yml` 为 `application-dev.yml` 并填入本地凭据（该文件已被 .gitignore 排除）。
 
 ## 文档
 

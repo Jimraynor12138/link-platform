@@ -2,6 +2,7 @@ package com.aaf.link.core;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
@@ -10,8 +11,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * EnableScheduling：统计快照按固定间隔批量落库（见 StatsSnapshotServiceImpl）
  * scanBasePackages：公共模块在 com.aaf.link.common 下，默认扫描（com.aaf.link.core）扫不到它，
  *                   因此显式指定 com.aaf.link —— 否则全局异常处理器、租户上下文等 Bean 会失效
+ * EnableFeignClients：扫描 com.aaf.link.core 下的 @FeignClient（当前只有调用 link-auth 的探活客户端）
  */
 @EnableScheduling
+@EnableFeignClients
 @SpringBootApplication(scanBasePackages = "com.aaf.link")
 public class LinkCoreApplication {
 
