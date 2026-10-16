@@ -1,0 +1,219 @@
+package com.aaf.link.core.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.aaf.link.core.bloom.ShortLinkBloomFilter;
+import com.aaf.link.core.cache.CacheInvalidationPublisher;
+import com.aaf.link.core.cache.CacheKeyBuilder;
+import com.aaf.link.core.cache.LocalLinkCache;
+import com.aaf.link.core.codec.Base62Codec;
+import com.aaf.link.common.exception.BizException;
+import com.aaf.link.core.config.LinkCoreProperties;
+import com.aaf.link.core.dao.LinkMapper;
+import com.aaf.link.core.dto.LinkCreateReqDTO;
+import com.aaf.link.core.dto.LinkPageReqDTO;
+import com.aaf.link.core.dto.LinkRespDTO;
+import com.aaf.link.core.dto.LinkUpdateReqDTO;
+import com.aaf.link.core.entity.LinkDO;
+import com.aaf.link.core.idgenerator.IdGenerator;
+import com.aaf.link.core.service.LinkService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.regex.Pattern;
+
+/**
+ * 短链接管理业务实现（V1.1：跳转逻辑已拆至 RedirectServiceImpl，本类负责 CRUD 与缓存一致性维护）。
+ *
+ * 缓存策略（Cache Aside）：
+ * 创建不写缓存（懒加载，首次访问回填）；修改/删除「先改库、后删缓存」，
+ * 删缓存失败仅记日志——脏数据最多存活到 TTL 过期，由 TTL 兜底最终一致性。
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class LinkServiceImpl implements LinkService {
+
+    /** 分组缺省值 */
+    public static final String DEFAULT_GID = "default";
+
+    /** 短码冲突时的最大重试次数（含首次尝试） */
+    private static final int MAX_CREATE_RETRY = 3;
+
+    /**
+     * 长 URL 格式校验：
+     * 协议限定 http/https；主机名允许无点的 localhost / 纯 IP；
+     * 路径与查询串放行为任意非空白字符（兼容 + , ; 等常见 query 字符），
+     * 拒绝空白字符可保证 URI.create 不抛异常。
+     */
+    private static final Pattern URL_PATTERN =
+            Pattern.compile("^https?://[\\w-]+(\\.[\\w-]+)*(:\\d+)?(/\\S*)?$");
+
+    private final LinkMapper linkMapper;
+    private final IdGenerator idGenerator;
+    private final LinkCoreProperties properties;
+    private final StringRedisTemplate stringRedisTemplate;
+    private final ShortLinkBloomFilter bloomFilter;
+    private final LocalLinkCache localLinkCache;
+    private final CacheInvalidationPublisher cacheInvalidationPublisher;
+
+    @Override
+    public LinkRespDTO createLink(LinkCreateReqDTO reqDTO) {
+        validateCreate(reqDTO);
+
+        // 发号 → Base62 → 落库；遇唯一键冲突则重新发号重试。
+        // 为什么需要重试：V1.2 起号源是 Redis INCR，Redis 丢计数/清空后可能回到已用过的号，
+        // 此时 (domain, code) 唯一索引会拦截插入 —— 这是发号方案的最后一道防线。
+        for (int attempt = 1; ; attempt++) {
+            long id = idGenerator.nextId();
+            // 把 long 转成 62 进制字符串
+            LinkDO link = buildLinkDO(id, reqDTO);
+            try {
+                // 写入数据库
+                linkMapper.insert(link);
+                // 同步写入布隆过滤器：否则新短码会被自己的防穿透拦截误判为「一定不存在」
+                bloomFilter.add(link.getCode());
+                log.info("创建短链: id={}, code={}, url={}", link.getId(), link.getCode(), link.getOriginalUrl());
+                return toRespDTO(link);
+            } catch (DuplicateKeyException e) {
+                if (attempt >= MAX_CREATE_RETRY) {
+                    log.error("短码连续冲突，放弃创建: attempts={}, code={}", attempt, link.getCode(), e);
+                    throw new BizException("短码生成冲突，请稍后重试");
+                }
+                // 冲突说明号源可能与 DB 不一致（如 Redis 从旧快照恢复）：先自愈再重试，
+                // 否则只会在已用过的号上反复撞车
+                log.warn("短码冲突，触发发号器自愈并重试: attempt={}, code={}", attempt, link.getCode());
+                idGenerator.recoverAfterConflict();
+            }
+        }
+    }
+
+    private LinkDO buildLinkDO(long id, LinkCreateReqDTO reqDTO) {
+        LinkDO link = new LinkDO();
+        link.setId(id);
+        link.setCode(Base62Codec.encode(id));
+        link.setDomain(properties.getDomain());
+        link.setOriginalUrl(reqDTO.getOriginalUrl());
+        link.setGid(reqDTO.getGid() == null || reqDTO.getGid().isBlank() ? DEFAULT_GID : reqDTO.getGid());
+        link.setEnableStatus(0);
+        link.setValidType(reqDTO.getValidType());
+        link.setValidDate(reqDTO.getValidType() == 2 ? reqDTO.getValidDate() : null);
+        link.setDescription(reqDTO.getDescription());
+        return link;
+    }
+
+    @Override
+    public void updateLink(LinkUpdateReqDTO reqDTO) {
+        LinkDO exist = linkMapper.selectById(reqDTO.getId());
+        if (exist == null) {
+            throw new BizException("短链不存在或已删除");
+        }
+        // 服务层兜底校验（防止绕过 Controller 的脏数据落库）：
+        // 修改后的 URL 若提供，必须与创建时同样通过格式校验
+        if (reqDTO.getOriginalUrl() != null && !URL_PATTERN.matcher(reqDTO.getOriginalUrl()).matches()) {
+            throw new BizException("长链接格式不正确");
+        }
+        // 有效期类型 / 启用状态若提供，必须在合法取值域内
+        if (reqDTO.getValidType() != null && reqDTO.getValidType() != 1 && reqDTO.getValidType() != 2) {
+            throw new BizException("有效期类型不合法，仅支持 1-永久 2-自定义");
+        }
+        if (reqDTO.getEnableStatus() != null && reqDTO.getEnableStatus() != 0 && reqDTO.getEnableStatus() != 1) {
+            throw new BizException("启用状态不合法，仅支持 0-启用 1-停用");
+        }
+        // 修改后仍需保证“自定义有效期必须带过期时间”的约束
+        Integer validType = reqDTO.getValidType() != null ? reqDTO.getValidType() : exist.getValidType();
+        LocalDateTime validDate = reqDTO.getValidDate() != null ? reqDTO.getValidDate() : exist.getValidDate();
+        if (validType == 2 && validDate == null) {
+            throw new BizException("自定义有效期必须指定过期时间");
+        }
+
+        LinkDO update = new LinkDO();
+        update.setId(reqDTO.getId());
+        update.setOriginalUrl(reqDTO.getOriginalUrl());
+        update.setGid(reqDTO.getGid());
+        update.setEnableStatus(reqDTO.getEnableStatus());
+        // 使用合并后的 validType/validDate，保证“仅改其他字段”时有效期字段语义完整
+        update.setValidType(validType);
+        update.setValidDate(validType == 2 ? validDate : null);
+        update.setDescription(reqDTO.getDescription());
+        linkMapper.updateById(update);
+
+        // Cache Aside：先改库、后删缓存（删失败仅记日志，TTL 兜底）
+        evictLinkCache(exist.getCode());
+    }
+
+    @Override
+    public void deleteLink(Long id) {
+        LinkDO exist = linkMapper.selectById(id);
+        if (exist == null) {
+            throw new BizException("短链不存在或已删除");
+        }
+        // @TableLogic 生效：实际执行 UPDATE t_link SET del_flag=1
+        linkMapper.deleteById(id);
+
+        // Cache Aside：先删库、后删缓存
+        evictLinkCache(exist.getCode());
+    }
+
+    /**
+     * 删除短链缓存（V3.3 起为两级 + 广播）。失败不阻断主流程：DB 是事实源，
+     * L2 由 TTL 兜底、L1 由更短的 TTL 兜底，最终一致。
+     *
+     * 顺序：本实例 L1 → L2 → 广播其余实例的 L1。
+     */
+    private void evictLinkCache(String code) {
+        String key = CacheKeyBuilder.buildLinkKey(properties.getDomain(), code);
+        // 1) 本实例 L1：直接失效
+        localLinkCache.invalidate(key);
+        // 2) L2 Redis
+        try {
+            stringRedisTemplate.delete(key);
+        } catch (Exception e) {
+            log.error("删除短链缓存失败, code={}", code, e);
+        }
+        // 3) 其他实例的 L1：广播失效（尽力而为，Redis 不可用时由 L1 TTL 兜底）
+        cacheInvalidationPublisher.publish(code);
+    }
+
+    @Override
+    public IPage<LinkRespDTO> pageLink(LinkPageReqDTO reqDTO) {
+        QueryWrapper<LinkDO> wrapper = new QueryWrapper<LinkDO>()
+                .eq(reqDTO.getGid() != null && !reqDTO.getGid().isBlank(), "gid", reqDTO.getGid())
+                .orderByDesc("create_time");
+        Page<LinkDO> page = linkMapper.selectPage(Page.of(reqDTO.getCurrent(), reqDTO.getSize()), wrapper);
+        return page.convert(this::toRespDTO);
+    }
+
+    private void validateCreate(LinkCreateReqDTO reqDTO) {
+        if (!URL_PATTERN.matcher(reqDTO.getOriginalUrl()).matches()) {
+            throw new BizException("长链接格式不正确");
+        }
+        // 先做取值域校验（含 null 判断），再做 == 2 判断，避免自动拆箱 NPE
+        if (reqDTO.getValidType() == null || (reqDTO.getValidType() != 1 && reqDTO.getValidType() != 2)) {
+            throw new BizException("有效期类型不合法，仅支持 1-永久 2-自定义");
+        }
+        if (reqDTO.getValidType() == 2 && reqDTO.getValidDate() == null) {
+            throw new BizException("自定义有效期必须指定过期时间");
+        }
+    }
+
+    private LinkRespDTO toRespDTO(LinkDO link) {
+        LinkRespDTO resp = new LinkRespDTO();
+        resp.setId(link.getId());
+        resp.setCode(link.getCode());
+        resp.setFullShortUrl("http://" + properties.getDomain() + "/" + link.getCode());
+        resp.setOriginalUrl(link.getOriginalUrl());
+        resp.setGid(link.getGid());
+        resp.setEnableStatus(link.getEnableStatus());
+        resp.setValidType(link.getValidType());
+        resp.setValidDate(link.getValidDate());
+        resp.setDescription(link.getDescription());
+        resp.setCreateTime(link.getCreateTime());
+        return resp;
+    }
+}
