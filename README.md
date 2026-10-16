@@ -22,11 +22,15 @@ MyBatis-Plus · MySQL 8 · Redis · RabbitMQ（可切换 Kafka）· Redisson · 
 
 ## 状态
 
-- ✅ V0（P0）：多模块骨架 + 短链核心迁移 + 公共类上移（198 单测通过，详见开发日志）
-- ⏳ V1（P1）：link-auth 租户化重构（租户 + RBAC + 双 Token + API Key）
+- ✅ V0（P0）：多模块骨架 + 短链核心迁移 + 公共类上移（198 单测）
+- ✅ V1（P1）：包名/配置前缀规范化（`com.aaf.link.*` / `link.core.*`）+ link-auth 认证链路与租户模型（双 Token / 刷新轮换 / 登出撤销 / 多租户越权防护；core 198 + auth 23 单测、E2E 9 步）
+- ⏳ V2（P2）：Nacos 注册与配置中心 + OpenFeign 服务间调用
 
 ## 文档
 
 - `docs/01-需求与架构.md`：产品定位、能力对比、商业卖点、V0~V7 版本路线图
-- `docs/02-开发日志.md`：各版本索引
-- `docs/devlog/V0-P0-多模块骨架与核心迁移.md`：P0 详细留痕（决策 / 踩坑 / 验证数据）
+- `docs/02-开发日志.md`：各版本索引（含详细 devlog 链接）
+- `docs/03-技术点与面试素材.md`：技术取舍、踩坑、面试话术
+- `docs/plans/`：每个阶段的方案文档
+- `docs/test/`：每个版本的测试报告（压测报告在 `docs/benchmark/`）
+- `docs/devlog/`：每个版本的详细留痕（决策 / 踩坑 / 验证数据 / 面试要点）

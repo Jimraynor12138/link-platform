@@ -1,0 +1,24 @@
+# ============================================================
+# 开发环境配置模板（link-auth）
+#
+# 使用方法：复制本文件为同目录下的 application-dev.yml，再填入本地真实凭据。
+#   真实的 application-dev.yml 已被 .gitignore 排除，不会进仓库。
+# ============================================================
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/link_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 你的本地MySQL密码
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 3000
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      # 与 AAE 隔离：AAE 用 db 0，本平台用 db 1
+      database: 1
+      timeout: 2s
+      connect-timeout: 2s
