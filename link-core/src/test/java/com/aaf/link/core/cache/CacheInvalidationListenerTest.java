@@ -31,7 +31,7 @@ class CacheInvalidationListenerTest {
     @BeforeEach
     void setUp() {
         LinkCoreProperties properties = new LinkCoreProperties();
-        properties.setDomain("localhost:8080");
+        properties.setDomain("localhost:8082");
         listener = new CacheInvalidationListener(localLinkCache, properties);
     }
 
@@ -45,7 +45,7 @@ class CacheInvalidationListenerTest {
     void invalidatesLocalCacheForReceivedCode() {
         listener.onMessage(message("abc123"), null);
 
-        verify(localLinkCache).invalidate("short-link:link:localhost:8080:abc123");
+        verify(localLinkCache).invalidate("link:core:link:localhost:8082:abc123");
     }
 
     @Test

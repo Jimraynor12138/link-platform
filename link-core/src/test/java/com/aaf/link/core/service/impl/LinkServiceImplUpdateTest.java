@@ -55,7 +55,7 @@ class LinkServiceImplUpdateTest {
     @BeforeEach
     void setUp() {
         LinkCoreProperties properties = new LinkCoreProperties();
-        properties.setDomain("localhost:8080");
+        properties.setDomain("localhost:8082");
         linkService = new LinkServiceImpl(linkMapper, idGenerator, properties, stringRedisTemplate, bloomFilter,
                 localLinkCache, cacheInvalidationPublisher);
     }
@@ -64,7 +64,7 @@ class LinkServiceImplUpdateTest {
         LinkDO link = new LinkDO();
         link.setId(100L);
         link.setCode("1cW");
-        link.setDomain("localhost:8080");
+        link.setDomain("localhost:8082");
         link.setOriginalUrl("https://example.com/old");
         link.setGid("default");
         link.setEnableStatus(0);
@@ -192,8 +192,8 @@ class LinkServiceImplUpdateTest {
         LinkUpdateReqDTO req = buildUpdate(100L);
         req.setOriginalUrl("https://example.com/new");
         linkService.updateLink(req);
-        verify(stringRedisTemplate).delete("short-link:link:localhost:8080:1cW");
-        verify(localLinkCache).invalidate("short-link:link:localhost:8080:1cW");
+        verify(stringRedisTemplate).delete("link:core:link:localhost:8082:1cW");
+        verify(localLinkCache).invalidate("link:core:link:localhost:8082:1cW");
         verify(cacheInvalidationPublisher).publish("1cW");
     }
 
@@ -201,8 +201,8 @@ class LinkServiceImplUpdateTest {
     void deleteEvictsLinkCache() {
         when(linkMapper.selectById(100L)).thenReturn(buildExistLink());
         linkService.deleteLink(100L);
-        verify(stringRedisTemplate).delete("short-link:link:localhost:8080:1cW");
-        verify(localLinkCache).invalidate("short-link:link:localhost:8080:1cW");
+        verify(stringRedisTemplate).delete("link:core:link:localhost:8082:1cW");
+        verify(localLinkCache).invalidate("link:core:link:localhost:8082:1cW");
         verify(cacheInvalidationPublisher).publish("1cW");
     }
 
@@ -210,7 +210,7 @@ class LinkServiceImplUpdateTest {
     void cacheEvictFailureDoesNotBreakUpdate() {
         // 删缓存失败不阻断主流程（DB 是事实源，TTL 兜底）
         when(linkMapper.selectById(100L)).thenReturn(buildExistLink());
-        when(stringRedisTemplate.delete("short-link:link:localhost:8080:1cW"))
+        when(stringRedisTemplate.delete("link:core:link:localhost:8082:1cW"))
                 .thenThrow(new RuntimeException("redis down"));
         LinkUpdateReqDTO req = buildUpdate(100L);
         req.setOriginalUrl("https://example.com/new");

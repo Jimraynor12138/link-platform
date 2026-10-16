@@ -71,8 +71,8 @@ link:
       capacity: 1000000
       # 目标误判率：0.01 表示约 1% 的不存在短码会被放行到缓存/DB
       false-positive-rate: 0.01
-      key: link:bloom:codes
-      init-flag-key: link:bloom:init
+      key: link:core:bloom:codes
+      init-flag-key: link:core:bloom:init
       warmup-batch-size: 1000
       # 位图整块加载进本进程内存（约 1.1MB），跳转查询零 Redis RTT。
       # 本地判定"不存在"时回查一次 Redis 确认：多实例下本地快照可能过期

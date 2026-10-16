@@ -15,7 +15,7 @@ public class LinkRespDTO {
     /** 短码 */
     private String code;
 
-    /** 完整短链地址，如 http://localhost:8080/aB3xK9 */
+    /** 完整短链地址，如 http://localhost:8082/aB3xK9 */
     private String fullShortUrl;
 
     /** 原始长 URL */

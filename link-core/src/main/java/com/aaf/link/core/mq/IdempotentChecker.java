@@ -18,7 +18,7 @@ import java.time.Duration;
 @RequiredArgsConstructor
 public class IdempotentChecker {
 
-    private static final String KEY_PREFIX = "short-link:mq:consumed:";
+    private static final String KEY_PREFIX = "link:core:mq:consumed:";
 
     private final StringRedisTemplate stringRedisTemplate;
     private final LinkCoreProperties properties;

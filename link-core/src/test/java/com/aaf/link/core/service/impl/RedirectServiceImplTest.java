@@ -44,7 +44,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class RedirectServiceImplTest {
 
-    private static final String KEY = "short-link:link:localhost:8080:abc123";
+    private static final String KEY = "link:core:link:localhost:8082:abc123";
 
     @Mock
     private LinkMapper linkMapper;
@@ -78,7 +78,7 @@ class RedirectServiceImplTest {
     @BeforeEach
     void setUp() {
         properties = new LinkCoreProperties();
-        properties.setDomain("localhost:8080");
+        properties.setDomain("localhost:8082");
         // 缩短互斥等待，避免测试变慢
         properties.getCache().getAntiBreakdown().setMutexWaitMillis(60);
         properties.getCache().getAntiBreakdown().setMutexWaitStepMillis(10);
@@ -116,7 +116,7 @@ class RedirectServiceImplTest {
         LinkDO link = new LinkDO();
         link.setId(1L);
         link.setCode("abc123");
-        link.setDomain("localhost:8080");
+        link.setDomain("localhost:8082");
         link.setOriginalUrl("https://example.com/target");
         link.setGid("default");
         link.setEnableStatus(enableStatus);

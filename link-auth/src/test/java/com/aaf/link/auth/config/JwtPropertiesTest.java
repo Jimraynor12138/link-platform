@@ -9,13 +9,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * 密钥配置的启动期校验（fail-fast）单测。
  */
-class AuthPropertiesTest {
+class JwtPropertiesTest {
 
     @Test
     @DisplayName("未配置密钥：拒绝启动")
     void rejectsMissingSecret() {
-        AuthProperties properties = new AuthProperties();
-        properties.getJwt().setSecret(null);
+        JwtProperties properties = new JwtProperties();
+        properties.setSecret(null);
 
         assertThatThrownBy(properties::validateJwtSecret)
                 .isInstanceOf(IllegalStateException.class);
@@ -24,8 +24,8 @@ class AuthPropertiesTest {
     @Test
     @DisplayName("占位符未被解析（Spring 会原样保留）：拒绝启动")
     void rejectsUnresolvedPlaceholder() {
-        AuthProperties properties = new AuthProperties();
-        properties.getJwt().setSecret("${LINK_AUTH_JWT_SECRET}");
+        JwtProperties properties = new JwtProperties();
+        properties.setSecret("${LINK_AUTH_JWT_SECRET}");
 
         assertThatThrownBy(properties::validateJwtSecret)
                 .isInstanceOf(IllegalStateException.class)
@@ -35,8 +35,8 @@ class AuthPropertiesTest {
     @Test
     @DisplayName("密钥强度不足 32 字节：拒绝启动")
     void rejectsTooShortSecret() {
-        AuthProperties properties = new AuthProperties();
-        properties.getJwt().setSecret("short-secret");
+        JwtProperties properties = new JwtProperties();
+        properties.setSecret("short-secret");
 
         assertThatThrownBy(properties::validateJwtSecret)
                 .isInstanceOf(IllegalStateException.class)
@@ -46,8 +46,8 @@ class AuthPropertiesTest {
     @Test
     @DisplayName("合规密钥：通过校验")
     void acceptsStrongSecret() {
-        AuthProperties properties = new AuthProperties();
-        properties.getJwt().setSecret("unit-test-secret-key-0123456789abcdefghijklmn");
+        JwtProperties properties = new JwtProperties();
+        properties.setSecret("unit-test-secret-key-0123456789abcdefghijklmn");
 
         assertThatCode(properties::validateJwtSecret).doesNotThrowAnyException();
     }

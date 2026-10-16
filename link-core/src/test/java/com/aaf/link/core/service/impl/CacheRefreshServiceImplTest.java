@@ -42,7 +42,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class CacheRefreshServiceImplTest {
 
-    private static final String KEY = "short-link:link:localhost:8080:abc123";
+    private static final String KEY = "link:core:link:localhost:8082:abc123";
 
     @Mock
     private LinkMapper linkMapper;
@@ -61,7 +61,7 @@ class CacheRefreshServiceImplTest {
     @BeforeEach
     void setUp() {
         properties = new LinkCoreProperties();
-        properties.setDomain("localhost:8080");
+        properties.setDomain("localhost:8082");
         // 用同步执行器让刷新在当前线程完成，断言才可确定
         Executor directExecutor = Runnable::run;
         refreshService = new CacheRefreshServiceImpl(linkMapper, stringRedisTemplate, new ObjectMapper(),

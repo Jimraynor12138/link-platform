@@ -25,7 +25,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class CacheRebuildLockTest {
 
-    private static final String LOCK_KEY = "short-link:lock:rebuild:localhost:8080:abc123";
+    private static final String LOCK_KEY = "link:core:lock:rebuild:localhost:8082:abc123";
 
     @Mock
     private StringRedisTemplate stringRedisTemplate;
@@ -37,7 +37,7 @@ class CacheRebuildLockTest {
     @BeforeEach
     void setUp() {
         LinkCoreProperties properties = new LinkCoreProperties();
-        properties.setDomain("localhost:8080");
+        properties.setDomain("localhost:8082");
         rebuildLock = new CacheRebuildLock(stringRedisTemplate, properties);
         lenient().when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
     }

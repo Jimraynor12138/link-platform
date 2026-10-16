@@ -27,7 +27,7 @@ import static org.mockito.Mockito.when;
 class IdempotentCheckerTest {
 
     private static final String VISIT_ID = "visit-1";
-    private static final String KEY = "short-link:mq:consumed:visit-1";
+    private static final String KEY = "link:core:mq:consumed:visit-1";
 
     @Mock
     private StringRedisTemplate stringRedisTemplate;

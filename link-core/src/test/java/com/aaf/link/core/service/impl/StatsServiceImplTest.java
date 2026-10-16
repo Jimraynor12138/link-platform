@@ -57,7 +57,7 @@ class StatsServiceImplTest {
     @BeforeEach
     void setUp() {
         LinkCoreProperties properties = new LinkCoreProperties();
-        properties.setDomain("localhost:8080");
+        properties.setDomain("localhost:8082");
         statsService = new StatsServiceImpl(stringRedisTemplate, properties);
         lenient().when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
         lenient().when(stringRedisTemplate.opsForHyperLogLog()).thenReturn(hyperLogLogOperations);

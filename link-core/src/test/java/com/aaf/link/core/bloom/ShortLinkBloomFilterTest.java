@@ -41,7 +41,7 @@ class ShortLinkBloomFilterTest {
     @BeforeEach
     void setUp() {
         properties = new LinkCoreProperties();
-        properties.setDomain("localhost:8080");
+        properties.setDomain("localhost:8082");
         properties.getBloom().setCapacity(1000L);
         properties.getBloom().setFalsePositiveRate(0.01d);
         bloomFilter = new ShortLinkBloomFilter(bitmapStore, properties, linkMapper);

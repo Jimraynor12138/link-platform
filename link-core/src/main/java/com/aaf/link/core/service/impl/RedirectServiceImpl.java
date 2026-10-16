@@ -59,7 +59,7 @@ public class RedirectServiceImpl implements RedirectService {
         }
 
         // 构建缓存 key
-        // 最终 key 形如：short-link:link:your.com:aB3xY。
+        // 最终 key 形如：link:core:link:your.com:aB3xY。
         String key = CacheKeyBuilder.buildLinkKey(properties.getDomain(), code);
         //  properties.getCache() 拿到缓存相关配置对象，.isEnabled() 读出布尔开关。
         //  true（正常）：走 L1 本地缓存 → L2 Redis → 回源并回填缓存的完整多级缓存链路。

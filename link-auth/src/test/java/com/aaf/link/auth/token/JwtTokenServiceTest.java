@@ -1,6 +1,6 @@
 package com.aaf.link.auth.token;
 
-import com.aaf.link.auth.config.AuthProperties;
+import com.aaf.link.auth.config.JwtProperties;
 import com.aaf.link.auth.model.dto.LoginUser;
 import io.jsonwebtoken.security.WeakKeyException;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,12 +20,12 @@ class JwtTokenServiceTest {
 
     @BeforeEach
     void setUp() {
-        AuthProperties properties = new AuthProperties();
-        properties.getJwt().setSecret("unit-test-secret-key-0123456789abcdefghijklmn");
-        properties.getJwt().setExpiration(1800L);
-        properties.getJwt().setRefreshExpiration(604800L);
-        properties.getJwt().setTokenHeader("Authorization");
-        properties.getJwt().setTokenHead("Bearer ");
+        JwtProperties properties = new JwtProperties();
+        properties.setSecret("unit-test-secret-key-0123456789abcdefghijklmn");
+        properties.setExpiration(1800L);
+        properties.setRefreshExpiration(604800L);
+        properties.setTokenHeader("Authorization");
+        properties.setTokenHead("Bearer ");
         jwtTokenService = new JwtTokenService(properties);
 
         user = new LoginUser();
@@ -77,8 +77,8 @@ class JwtTokenServiceTest {
     @Test
     void tooShortSecretIsRejected() {
         // 防呆：密钥不足 32 字节时 HS256 不可用，必须快速失败而不是悄悄用弱密钥签名
-        AuthProperties weak = new AuthProperties();
-        weak.getJwt().setSecret("too-short");
+        JwtProperties weak = new JwtProperties();
+        weak.setSecret("too-short");
         JwtTokenService weakService = new JwtTokenService(weak);
 
         assertThatThrownBy(() -> weakService.generateAccessToken(user))

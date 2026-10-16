@@ -5,7 +5,7 @@ import java.util.concurrent.ThreadLocalRandom;
 /**
  * 缓存 Key 统一构建器 + TTL 抖动计算。
  *
- * <p>Key 设计：short-link:link:{domain}:{code}
+ * <p>Key 设计：link:core:link:{domain}:{code}
  * <ul>
  *   <li>短前缀节省内存（本系统 key 数量 = 短链数量，量大时前缀长度直接影响内存占用）</li>
  *   <li>domain 进 key：V0 虽是单域名，但这是为多域名预留的正确形态，避免未来缓存迁移</li>
@@ -16,9 +16,9 @@ public final class CacheKeyBuilder {
     /** 空值缓存标记值：防穿透，表示该短码确认不存在 */
     public static final String NULL_MARKER = "null";
 
-    private static final String LINK_KEY_PREFIX = "short-link:link:";
-    private static final String STATS_KEY_PREFIX = "short-link:stats:";
-    private static final String REBUILD_LOCK_KEY_PREFIX = "short-link:lock:rebuild:";
+    private static final String LINK_KEY_PREFIX = "link:core:link:";
+    private static final String STATS_KEY_PREFIX = "link:core:stats:";
+    private static final String REBUILD_LOCK_KEY_PREFIX = "link:core:lock:rebuild:";
 
     private CacheKeyBuilder() {
     }

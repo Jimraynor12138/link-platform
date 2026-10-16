@@ -43,7 +43,7 @@ class SegmentIdGeneratorTest {
     @BeforeEach
     void setUp() {
         properties = new LinkCoreProperties();
-        properties.setDomain("localhost:8080");
+        properties.setDomain("localhost:8082");
         properties.getSegment().setStep(10);
         // 剩余 ≤ 20% * 10 = 2 个号时触发预取
         properties.getSegment().setPrefetchRemainingPercent(20);

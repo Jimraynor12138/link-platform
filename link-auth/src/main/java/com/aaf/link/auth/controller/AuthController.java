@@ -6,7 +6,7 @@ import com.aaf.link.auth.model.dto.RefreshTokenDTO;
 import com.aaf.link.auth.model.vo.LoginVO;
 import com.aaf.link.auth.model.vo.TokenVO;
 import com.aaf.link.auth.model.vo.UserInfoVO;
-import com.aaf.link.auth.security.JwtAuthenticationFilter;
+import com.aaf.link.auth.security.SecurityUtils;
 import com.aaf.link.auth.service.AuthService;
 import com.aaf.link.common.result.Result;
 import jakarta.servlet.http.HttpServletRequest;
@@ -38,7 +38,7 @@ public class AuthController {
     }
 
     /**
-     * 刷新令牌（需携带 Refresh Token 本体，无需 Access Token）
+     * 刷新令牌（白名单，需携带 Refresh Token 本体，无需 Access Token）
      */
     @PostMapping("/refresh")
     public Result<TokenVO> refresh(@Valid @RequestBody RefreshTokenDTO refreshTokenDTO) {
@@ -58,7 +58,7 @@ public class AuthController {
      */
     @GetMapping("/me")
     public Result<UserInfoVO> me() {
-        LoginUser loginUser = JwtAuthenticationFilter.currentUser();
+        LoginUser loginUser = SecurityUtils.currentUser();
         UserInfoVO vo = new UserInfoVO();
         vo.setId(loginUser.getId());
         vo.setUsername(loginUser.getUsername());

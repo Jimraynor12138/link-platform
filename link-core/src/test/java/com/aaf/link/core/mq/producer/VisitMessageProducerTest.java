@@ -49,7 +49,7 @@ class VisitMessageProducerTest {
     void sendUsesConfiguredExchangeAndRoutingKey() {
         VisitMessage message = producer.buildMessage("abc123", "1.2.3.4", "UA", null);
         producer.send(message);
-        verify(rabbitTemplate).convertAndSend("short-link.visit.exchange", "short-link.visit", message);
+        verify(rabbitTemplate).convertAndSend("link.visit.exchange", "link.visit", message);
     }
 
     @Test

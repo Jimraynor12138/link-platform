@@ -62,7 +62,7 @@ class StatsSnapshotServiceImplTest {
     @BeforeEach
     void setUp() {
         LinkCoreProperties properties = new LinkCoreProperties();
-        properties.setDomain("localhost:8080");
+        properties.setDomain("localhost:8082");
         snapshotService = new StatsSnapshotServiceImpl(stringRedisTemplate, linkMapper, linkStatsMapper,
                 new ObjectMapper(), properties);
         lenient().when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
@@ -184,7 +184,7 @@ class StatsSnapshotServiceImplTest {
     void scheduledRescanSkipsWhenDisabled() {
         // 关闭开关后不应触碰 Redis（避免无意义的 SCAN）
         LinkCoreProperties props = new LinkCoreProperties();
-        props.setDomain("localhost:8080");
+        props.setDomain("localhost:8082");
         props.getStatsPersist().setRescanEnabled(false);
         StatsSnapshotServiceImpl service = new StatsSnapshotServiceImpl(stringRedisTemplate, linkMapper,
                 linkStatsMapper, new ObjectMapper(), props);

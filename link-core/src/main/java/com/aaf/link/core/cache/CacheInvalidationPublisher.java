@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
 public class CacheInvalidationPublisher {
 
     /** 失效广播频道：消息体为短码 */
-    public static final String CHANNEL = "short-link:cache:invalidate";
+    public static final String CHANNEL = "link:core:cache:invalidate";
 
     private final StringRedisTemplate stringRedisTemplate;
 

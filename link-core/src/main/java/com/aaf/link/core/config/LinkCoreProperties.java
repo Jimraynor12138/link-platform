@@ -15,7 +15,7 @@ public class LinkCoreProperties {
     /**
      * 短链域名，V0 全局统一，不做多域名路由
      */
-    private String domain = "localhost:8080";
+    private String domain = "localhost:8082";
 
     /**
      * 发号器类型：auto / redis / segment / snowflake，由各实现类上的
@@ -74,10 +74,10 @@ public class LinkCoreProperties {
         private double falsePositiveRate = 0.01d;
 
         /** 位图 key（Redis BitMap） */
-        private String key = "short-link:bloom:codes";
+        private String key = "link:core:bloom:codes";
 
         /** 预热完成标记 key：跨进程/重启判断位图是否已与 DB 对齐 */
-        private String initFlagKey = "short-link:bloom:init";
+        private String initFlagKey = "link:core:bloom:init";
 
         /** 预热时每批从 DB 读取的短码数 */
         private int warmupBatchSize = 1000;
@@ -164,15 +164,15 @@ public class LinkCoreProperties {
          */
         private boolean enabled = true;
 
-        private String exchange = "short-link.visit.exchange";
+        private String exchange = "link.visit.exchange";
 
-        private String queue = "short-link.visit.queue";
+        private String queue = "link.visit.queue";
 
-        private String routingKey = "short-link.visit";
+        private String routingKey = "link.visit";
 
-        private String deadLetterExchange = "short-link.visit.dlx";
+        private String deadLetterExchange = "link.visit.dlx";
 
-        private String deadLetterQueue = "short-link.visit.dlq";
+        private String deadLetterQueue = "link.visit.dlq";
 
         /**
          * 消费幂等 key 保留时间（秒）= 允许的消息重投窗口。

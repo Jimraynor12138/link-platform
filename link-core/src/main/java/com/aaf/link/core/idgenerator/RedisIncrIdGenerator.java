@@ -29,7 +29,7 @@ import org.springframework.stereotype.Component;
 public class RedisIncrIdGenerator implements IdGenerator {
 
     /** 发号器 key */
-    public static final String ID_KEY = "short-link:id-generator";
+    public static final String ID_KEY = "link:core:id-generator";
 
     private final StringRedisTemplate stringRedisTemplate;
     private final JdbcTemplate jdbcTemplate;

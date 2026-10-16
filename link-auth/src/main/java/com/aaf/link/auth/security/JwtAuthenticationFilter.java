@@ -1,6 +1,5 @@
 package com.aaf.link.auth.security;
 
-import com.aaf.link.auth.model.dto.LoginUser;
 import com.aaf.link.auth.token.JwtTokenService;
 import com.aaf.link.auth.token.TokenBlacklistService;
 import io.jsonwebtoken.JwtException;
@@ -30,6 +29,8 @@ import java.io.IOException;
  *
  * <p>处理顺序：类型校验 → 失效名单校验（jti）→ 查库加载用户（权限/禁用状态即时生效）→ 填充上下文。
  * 任一步失败都<b>不抛异常</b>，只是不填充上下文，最终由 AuthenticationEntryPoint 统一返回 401。
+ *
+ * <p>取当前用户请用 {@link SecurityUtils#currentUser()}（本类不再兼任工具类职责）。
  */
 @Slf4j
 @Component
@@ -71,16 +72,5 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
-    }
-
-    /**
-     * 便于测试与复用：从已认证的上下文中取认证主体
-     */
-    public static LoginUser currentUser() {
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.getPrincipal() instanceof LoginUser loginUser) {
-            return loginUser;
-        }
-        return null;
     }
 }

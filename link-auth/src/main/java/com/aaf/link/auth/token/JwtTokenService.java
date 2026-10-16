@@ -1,6 +1,6 @@
 package com.aaf.link.auth.token;
 
-import com.aaf.link.auth.config.AuthProperties;
+import com.aaf.link.auth.config.JwtProperties;
 import com.aaf.link.auth.model.dto.LoginUser;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
 import java.util.UUID;
+import java.util.function.Function;
 
 /**
  * 令牌服务：签发的 Access / Refresh 双令牌共用同一密钥，用 {@code type} 声明区分用途。
@@ -37,16 +38,16 @@ public class JwtTokenService {
     private static final String TYPE_ACCESS = "access";
     private static final String TYPE_REFRESH = "refresh";
 
-    private final AuthProperties authProperties;
+    private final JwtProperties jwtProperties;
 
     // ==================== 签发 ====================
 
     public String generateAccessToken(LoginUser user) {
-        return buildToken(user, TYPE_ACCESS, authProperties.getJwt().getExpiration());
+        return buildToken(user, TYPE_ACCESS, jwtProperties.getExpiration());
     }
 
     public String generateRefreshToken(LoginUser user) {
-        return buildToken(user, TYPE_REFRESH, authProperties.getJwt().getRefreshExpiration());
+        return buildToken(user, TYPE_REFRESH, jwtProperties.getRefreshExpiration());
     }
 
     private String buildToken(LoginUser user, String type, long ttlSeconds) {
@@ -114,16 +115,16 @@ public class JwtTokenService {
 
     /** Refresh Token 有效期（毫秒），用于写入 Redis */
     public long getRefreshExpirationMillis() {
-        return authProperties.getJwt().getRefreshExpiration() * 1000L;
+        return jwtProperties.getRefreshExpiration() * 1000L;
     }
 
     /** 从请求头解析令牌（形如 "Bearer xxx"） */
     public String resolveToken(HttpServletRequest request) {
-        String header = request.getHeader(authProperties.getJwt().getTokenHeader());
+        String header = request.getHeader(jwtProperties.getTokenHeader());
         if (!StringUtils.hasText(header)) {
             return null;
         }
-        String head = authProperties.getJwt().getTokenHead();
+        String head = jwtProperties.getTokenHead();
         if (head != null && !head.isBlank() && !header.startsWith(head)) {
             return null;
         }
@@ -136,7 +137,7 @@ public class JwtTokenService {
         return readClaim(token, claims -> claims.get(CLAIM_TYPE, String.class));
     }
 
-    private <T> T readClaim(String token, java.util.function.Function<Claims, T> reader) {
+    private <T> T readClaim(String token, Function<Claims, T> reader) {
         try {
             return reader.apply(parseClaims(token));
         } catch (JwtException | IllegalArgumentException e) {
@@ -153,6 +154,6 @@ public class JwtTokenService {
     }
 
     private SecretKey secretKey() {
-        return Keys.hmacShaKeyFor(authProperties.getJwt().getSecret().getBytes(StandardCharsets.UTF_8));
+        return Keys.hmacShaKeyFor(jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8));
     }
 }

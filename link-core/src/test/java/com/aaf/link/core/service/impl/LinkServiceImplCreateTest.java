@@ -56,7 +56,7 @@ class LinkServiceImplCreateTest {
     @BeforeEach
     void setUp() {
         LinkCoreProperties properties = new LinkCoreProperties();
-        properties.setDomain("localhost:8080");
+        properties.setDomain("localhost:8082");
         linkService = new LinkServiceImpl(linkMapper, idGenerator, properties, stringRedisTemplate, bloomFilter,
                 localLinkCache, cacheInvalidationPublisher);
     }
@@ -77,7 +77,7 @@ class LinkServiceImplCreateTest {
 
         // 1000 = 62*16 + 8, Base62 编码为 g8
         assertEquals("g8", resp.getCode());
-        assertEquals("http://localhost:8080/g8", resp.getFullShortUrl());
+        assertEquals("http://localhost:8082/g8", resp.getFullShortUrl());
 
         ArgumentCaptor<LinkDO> captor = ArgumentCaptor.forClass(LinkDO.class);
         verify(linkMapper).insert(captor.capture());

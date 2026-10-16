@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class LocalLinkCacheTest {
 
-    private static final String KEY = "short-link:link:localhost:8080:abc123";
+    private static final String KEY = "link:core:link:localhost:8082:abc123";
 
     private LinkCoreProperties properties;
     private LocalLinkCache localLinkCache;
@@ -23,7 +23,7 @@ class LocalLinkCacheTest {
     @BeforeEach
     void setUp() {
         properties = new LinkCoreProperties();
-        properties.setDomain("localhost:8080");
+        properties.setDomain("localhost:8082");
         properties.getCache().getLocal().setMaxSize(100);
         properties.getCache().getLocal().setTtlSeconds(60);
         localLinkCache = new LocalLinkCache(properties);
