@@ -1,5 +1,6 @@
 package com.aaf.link.auth.token;
 
+import com.aaf.link.common.constant.CommonConstants;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -16,8 +17,6 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class TokenBlacklistService {
 
-    private static final String KEY_PREFIX = "link:auth:token:blacklist:";
-
     private final StringRedisTemplate stringRedisTemplate;
 
     /**
@@ -30,7 +29,7 @@ public class TokenBlacklistService {
         if (tokenId == null || tokenId.isBlank() || ttlMillis <= 0) {
             return;
         }
-        stringRedisTemplate.opsForValue().set(KEY_PREFIX + tokenId, "1", ttlMillis, TimeUnit.MILLISECONDS);
+        stringRedisTemplate.opsForValue().set(CommonConstants.TOKEN_BLACKLIST_KEY_PREFIX + tokenId, "1", ttlMillis, TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -40,6 +39,6 @@ public class TokenBlacklistService {
         if (tokenId == null || tokenId.isBlank()) {
             return false;
         }
-        return Boolean.TRUE.equals(stringRedisTemplate.hasKey(KEY_PREFIX + tokenId));
+        return Boolean.TRUE.equals(stringRedisTemplate.hasKey(CommonConstants.TOKEN_BLACKLIST_KEY_PREFIX + tokenId));
     }
 }

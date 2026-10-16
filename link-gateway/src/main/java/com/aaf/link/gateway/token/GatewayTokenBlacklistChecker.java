@@ -1,5 +1,6 @@
 package com.aaf.link.gateway.token;
 
+import com.aaf.link.common.constant.CommonConstants;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -17,8 +18,6 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class GatewayTokenBlacklistChecker {
 
-    private static final String KEY_PREFIX = "link:auth:token:blacklist:";
-
     private final StringRedisTemplate stringRedisTemplate;
 
     public boolean isBlacklisted(String jti) {
@@ -26,7 +25,7 @@ public class GatewayTokenBlacklistChecker {
             return false;
         }
         try {
-            return Boolean.TRUE.equals(stringRedisTemplate.hasKey(KEY_PREFIX + jti));
+            return Boolean.TRUE.equals(stringRedisTemplate.hasKey(CommonConstants.TOKEN_BLACKLIST_KEY_PREFIX + jti));
         } catch (Exception e) {
             return false;
         }
