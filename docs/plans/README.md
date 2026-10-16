@@ -9,7 +9,7 @@
 | P1 / V1 | [P1-link-auth认证与租户模型](./P1-link-auth认证与租户模型.md) | ✅ 已完成 | [V1-P1](../devlog/V1-P1-link-auth认证与租户模型.md) |
 | P2 / V2 | [P2-Nacos与Feign通路](./P2-Nacos与Feign通路.md) | ✅ 已完成（含前置技术债清理） | [V2-P2](../devlog/V2-P2-Nacos注册配置与Feign通路.md) |
 | P3 / V3 | [P3-Gateway与Sentinel](./P3-Gateway与Sentinel.md) | ✅ 已完成 | [V3-P3](../devlog/V3-P3-Gateway与Sentinel.md) |
-| P4 / V4 | [P4-core多租户渠道与APIKey](./P4-core多租户渠道与APIKey.md) | 🚧 进行中 | [V4-P4](../devlog/V4-P4-*.md) |
+| P4 / V4 | [P4-core多租户渠道与APIKey](./P4-core多租户渠道与APIKey.md) | ✅ 已完成 | [V4-P4](../devlog/V4-P4-core多租户渠道与APIKey.md) |
 | P5 / V5 | 统计链路 MQ 可切换（RabbitMQ ↔ Kafka，不引入 RocketMQ） | ⏳ 待开始 | — |
 | P6 / V6 | Vue3 管理后台 + 看板 | ⏳ 待开始 | — |
 | P7 / V7 | Docker Compose 编排 + 压测对比 | ⏳ 待开始 | — |
