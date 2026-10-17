@@ -24,6 +24,9 @@ public class LinkRespDTO {
     /** 分组标识 */
     private String gid;
 
+    /** 渠道标识（可选，空=无渠道，用于点击归因） */
+    private String channel;
+
     /** 启用状态：0 启用，1 停用 */
     private Integer enableStatus;
 

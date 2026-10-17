@@ -2,12 +2,14 @@ package com.aaf.link.auth.service;
 
 import com.aaf.link.auth.mapper.ApiKeyMapper;
 import com.aaf.link.auth.model.entity.ApiKey;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
+import java.util.List;
 
 /**
  * 开放接口凭据服务（P4）：生成 access_key + secret。
@@ -37,6 +39,20 @@ public class ApiKeyService {
         key.setStatus(1);
         apiKeyMapper.insert(key);
         return key;
+    }
+
+    /**
+     * 按租户查询 API Key 列表（P6 平台侧）。
+     *
+     * @param tenantId 为空则查询全部租户（走 {@code idx_tenant} 索引）
+     */
+    public List<ApiKey> listByTenantId(Long tenantId) {
+        QueryWrapper<ApiKey> wrapper = new QueryWrapper<>();
+        if (tenantId != null) {
+            wrapper.eq("tenant_id", tenantId);
+        }
+        wrapper.orderByDesc("create_time");
+        return apiKeyMapper.selectList(wrapper);
     }
 
     private String randomHex(int byteCount) {

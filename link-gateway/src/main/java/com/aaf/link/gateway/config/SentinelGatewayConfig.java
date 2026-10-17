@@ -75,8 +75,10 @@ public class SentinelGatewayConfig {
 
     private void initFlowRules() {
         Set<GatewayFlowRule> rules = new HashSet<>();
-        // 对 /api/v1/** 路由（route id = link-core-api）限流：QPS=2，1 秒统计窗口
-        rules.add(new GatewayFlowRule("link-core-api").setCount(2).setIntervalSec(1));
+        // 对 /api/v1/** 路由（route id = link-core-api）限流：QPS=50，1 秒统计窗口。
+        // P6 从 2 调到 50：管理后台一页会并发拉列表/分组/统计，QPS=2 会把 UI 直接卡成 429。
+        // 压测/演示"限流生效"时仍可临时调回 2。
+        rules.add(new GatewayFlowRule("link-core-api").setCount(50).setIntervalSec(1));
         GatewayRuleManager.loadRules(rules);
     }
 }

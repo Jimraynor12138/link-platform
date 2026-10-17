@@ -211,6 +211,7 @@ public class LinkServiceImpl implements LinkService {
         resp.setFullShortUrl("http://" + properties.getDomain() + "/" + link.getCode());
         resp.setOriginalUrl(link.getOriginalUrl());
         resp.setGid(link.getGid());
+        resp.setChannel(link.getChannel());
         resp.setEnableStatus(link.getEnableStatus());
         resp.setValidType(link.getValidType());
         resp.setValidDate(link.getValidDate());

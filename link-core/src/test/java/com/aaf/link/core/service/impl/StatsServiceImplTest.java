@@ -2,6 +2,9 @@ package com.aaf.link.core.service.impl;
 
 import com.aaf.link.core.cache.CacheKeyBuilder;
 import com.aaf.link.core.config.LinkCoreProperties;
+import com.aaf.link.core.dao.LinkStatsMapper;
+import com.aaf.link.core.dto.ChannelStatsVO;
+import com.aaf.link.core.dto.DailyStatsVO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +18,7 @@ import org.springframework.data.redis.core.ValueOperations;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -51,6 +55,8 @@ class StatsServiceImplTest {
     private HyperLogLogOperations<String, String> hyperLogLogOperations;
     @Mock
     private HashOperations<String, Object, Object> hashOperations;
+    @Mock
+    private LinkStatsMapper linkStatsMapper;
 
     private StatsServiceImpl statsService;
 
@@ -58,7 +64,7 @@ class StatsServiceImplTest {
     void setUp() {
         LinkCoreProperties properties = new LinkCoreProperties();
         properties.setDomain("localhost:8082");
-        statsService = new StatsServiceImpl(stringRedisTemplate, properties);
+        statsService = new StatsServiceImpl(stringRedisTemplate, properties, linkStatsMapper);
         lenient().when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
         lenient().when(stringRedisTemplate.opsForHyperLogLog()).thenReturn(hyperLogLogOperations);
         lenient().when(stringRedisTemplate.opsForHash()).thenReturn(hashOperations);
@@ -157,6 +163,40 @@ class StatsServiceImplTest {
         when(hashOperations.entries(DEVICE_KEY)).thenReturn(Map.of());
 
         assertEquals(0L, statsService.queryStats(CODE, null).getPv());
+    }
+
+    @Test
+    void queryDailyStatsDefaultsToRecentSevenDays() {
+        // 不传 from/to 时默认近 7 天（to=今天，from=today-6）
+        LocalDate today = LocalDate.now();
+        String from = today.minusDays(6).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        String to = today.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        List<DailyStatsVO> expected = List.of();
+        when(linkStatsMapper.sumByDate(from, to)).thenReturn(expected);
+
+        List<DailyStatsVO> actual = statsService.queryDailyStats(null, null);
+
+        assertEquals(expected, actual);
+        verify(linkStatsMapper).sumByDate(from, to);
+    }
+
+    @Test
+    void queryChannelStatsPassesExplicitRange() {
+        List<ChannelStatsVO> expected = List.of();
+        when(linkStatsMapper.sumByChannel("2026-10-01", "2026-10-07")).thenReturn(expected);
+
+        assertEquals(expected, statsService.queryChannelStats("2026-10-01", "2026-10-07"));
+        verify(linkStatsMapper).sumByChannel("2026-10-01", "2026-10-07");
+    }
+
+    @Test
+    void queryDailyStatsSwapsReversedRange() {
+        // 前端把起止日期选反时不报错，自动交换
+        when(linkStatsMapper.sumByDate("2026-10-01", "2026-10-07")).thenReturn(List.of());
+
+        statsService.queryDailyStats("2026-10-07", "2026-10-01");
+
+        verify(linkStatsMapper).sumByDate("2026-10-01", "2026-10-07");
     }
 
     @Test

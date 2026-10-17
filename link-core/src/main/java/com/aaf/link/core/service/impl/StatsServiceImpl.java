@@ -6,6 +6,9 @@ import com.aaf.link.core.cache.CacheKeyBuilder;
 import com.aaf.link.core.common.util.RefererParser;
 import com.aaf.link.core.common.util.UserAgentParser;
 import com.aaf.link.core.config.LinkCoreProperties;
+import com.aaf.link.core.dao.LinkStatsMapper;
+import com.aaf.link.core.dto.ChannelStatsVO;
+import com.aaf.link.core.dto.DailyStatsVO;
 import com.aaf.link.core.dto.StatsRespDTO;
 import com.aaf.link.core.service.StatsService;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +20,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -36,6 +40,8 @@ public class StatsServiceImpl implements StatsService {
 
     private final StringRedisTemplate stringRedisTemplate;
     private final LinkCoreProperties properties;
+    /** 看板聚合的数据源（t_link_stats 快照表，受多租户拦截器约束） */
+    private final LinkStatsMapper linkStatsMapper;
 
     @Override
     public void recordVisit(String code, String clientIp, String userAgent, String referer) {
@@ -108,6 +114,46 @@ public class StatsServiceImpl implements StatsService {
         resp.setDeviceStats(toLongMap(stringRedisTemplate.opsForHash()
                 .entries(CacheKeyBuilder.buildDeviceKey(statDate, code))));
         return resp;
+    }
+
+    @Override
+    public List<DailyStatsVO> queryDailyStats(String from, String to) {
+        LocalDate[] range = resolveRange(from, to);
+        return linkStatsMapper.sumByDate(range[0].format(DATE_FORMATTER), range[1].format(DATE_FORMATTER));
+    }
+
+    @Override
+    public List<ChannelStatsVO> queryChannelStats(String from, String to) {
+        LocalDate[] range = resolveRange(from, to);
+        return linkStatsMapper.sumByChannel(range[0].format(DATE_FORMATTER), range[1].format(DATE_FORMATTER));
+    }
+
+    /**
+     * 解析看板时间范围：to 默认今天，from 默认 to 往前 6 天（共 7 天）。
+     * 非法日期回退默认值，避免前端传错参数直接 500。
+     */
+    private LocalDate[] resolveRange(String from, String to) {
+        LocalDate end = parseDate(to, LocalDate.now());
+        LocalDate start = parseDate(from, end.minusDays(6));
+        if (start.isAfter(end)) {
+            // 前端把顺序选反了：交换，而不是报错
+            LocalDate tmp = start;
+            start = end;
+            end = tmp;
+        }
+        return new LocalDate[]{start, end};
+    }
+
+    private LocalDate parseDate(String value, LocalDate fallback) {
+        if (StrUtil.isBlank(value)) {
+            return fallback;
+        }
+        try {
+            return LocalDate.parse(value, DATE_FORMATTER);
+        } catch (Exception e) {
+            log.warn("看板日期参数非法，按默认值处理: value={}", value);
+            return fallback;
+        }
     }
 
     /**

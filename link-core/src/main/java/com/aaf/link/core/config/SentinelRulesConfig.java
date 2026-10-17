@@ -24,10 +24,11 @@ public class SentinelRulesConfig {
     @PostConstruct
     public void initFlowRules() {
         List<FlowRule> rules = new ArrayList<>();
-        // 创建短链：QPS=1，便于演示"连续两次创建第二次被限流"
+        // 创建短链：QPS=10（P6 从 1 上调——后台连续创建会被限流挡住）。
+        // 演示"限流生效"时可临时调回 1。
         FlowRule createLinkRule = new FlowRule("createLink");
         createLinkRule.setGrade(RuleConstant.FLOW_GRADE_QPS);
-        createLinkRule.setCount(1);
+        createLinkRule.setCount(10);
         rules.add(createLinkRule);
 
         FlowRuleManager.loadRules(rules);

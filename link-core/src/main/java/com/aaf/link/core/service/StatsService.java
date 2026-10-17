@@ -1,8 +1,11 @@
 package com.aaf.link.core.service;
 
+import com.aaf.link.core.dto.ChannelStatsVO;
+import com.aaf.link.core.dto.DailyStatsVO;
 import com.aaf.link.core.dto.StatsRespDTO;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 短链访问统计服务。
@@ -32,4 +35,17 @@ public interface StatsService {
      * 查询某短码某日的统计（date 为空则取当天）
      */
     StatsRespDTO queryStats(String code, String date);
+
+    /**
+     * 看板：按日汇总 PV/UV（数据源 {@code t_link_stats}，受多租户隔离）。
+     *
+     * @param from 起始日期 yyyy-MM-dd，空则默认近 7 天
+     * @param to   结束日期 yyyy-MM-dd，空则默认今天
+     */
+    List<DailyStatsVO> queryDailyStats(String from, String to);
+
+    /**
+     * 看板：按渠道汇总 PV/UV（数据源 {@code t_link_stats}，受多租户隔离）。
+     */
+    List<ChannelStatsVO> queryChannelStats(String from, String to);
 }

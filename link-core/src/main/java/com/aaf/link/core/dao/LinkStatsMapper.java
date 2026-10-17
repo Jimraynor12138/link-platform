@@ -1,10 +1,15 @@
 package com.aaf.link.core.dao;
 
+import com.aaf.link.core.dto.ChannelStatsVO;
+import com.aaf.link.core.dto.DailyStatsVO;
+import com.aaf.link.core.entity.LinkStatsDO;
 import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.aaf.link.core.entity.LinkStatsDO;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+
+import java.util.List;
 
 /**
  * 短链统计 Mapper（V2）。
@@ -45,4 +50,31 @@ public interface LinkStatsMapper extends BaseMapper<LinkStatsDO> {
                 pv = IF(new.pv >= t_link_stats.pv, new.pv, t_link_stats.pv)
             """)
     int upsertStats(@Param("stats") LinkStatsDO stats);
+
+    /**
+     * 按日汇总 PV/UV（看板趋势）。
+     *
+     * <p><b>不加 {@code @InterceptorIgnore}</b>：让多租户拦截器自动拼 {@code tenant_id} 条件——
+     * 租户只能看到自己的数据，平台级（tenant=0，ignoreTable 返回 true）不过滤、可看全量。
+     */
+    @Select("""
+            SELECT `date` AS date, SUM(pv) AS pv, SUM(uv) AS uv
+            FROM t_link_stats
+            WHERE `date` BETWEEN #{from} AND #{to}
+            GROUP BY `date`
+            ORDER BY `date`
+            """)
+    List<DailyStatsVO> sumByDate(@Param("from") String from, @Param("to") String to);
+
+    /**
+     * 按渠道汇总 PV/UV（渠道效果报表）。租户隔离语义同 {@link #sumByDate}。
+     */
+    @Select("""
+            SELECT channel AS channel, SUM(pv) AS pv, SUM(uv) AS uv
+            FROM t_link_stats
+            WHERE `date` BETWEEN #{from} AND #{to}
+            GROUP BY channel
+            ORDER BY pv DESC
+            """)
+    List<ChannelStatsVO> sumByChannel(@Param("from") String from, @Param("to") String to);
 }
