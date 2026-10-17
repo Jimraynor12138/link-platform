@@ -19,6 +19,11 @@
             <groupId>com.aaf</groupId>
             <artifactId>link-common</artifactId>
         </dependency>
+        <!-- 健康检查端点（compose healthcheck 用；只暴露 health/info） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
         <!-- Nacos 服务注册（版本由 spring-cloud-alibaba-dependencies BOM 管理） -->
         <dependency>
             <groupId>com.alibaba.cloud</groupId>

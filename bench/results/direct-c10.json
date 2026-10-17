@@ -1,0 +1,16 @@
+{
+  "label": "直连 core (c=10)",
+  "url": "http://localhost:8082/1",
+  "concurrency": 10,
+  "durationSec": 20,
+  "total": 58470,
+  "ok": 58470,
+  "fail": 0,
+  "qps": 2910.4,
+  "errorRate": 0,
+  "avgMs": 3.42,
+  "p50": 3.17,
+  "p95": 5.35,
+  "p99": 8.78,
+  "maxMs": 108.81
+}

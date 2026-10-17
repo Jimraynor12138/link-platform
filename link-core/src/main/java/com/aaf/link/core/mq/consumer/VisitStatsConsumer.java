@@ -24,7 +24,10 @@ public class VisitStatsConsumer {
 
     private final VisitMessageHandler handler;
 
-    @RabbitListener(queues = "${link.core.mq.queue}")
+    // 必须给默认值：optional:nacos 的容错承诺是"Nacos 不可用也能启动"，
+    // 而 @RabbitListener 的占位符是从 Environment 解析的（拿不到 LinkCoreProperties 的字段默认值），
+    // 没配 link-core.yaml 时会直接 IllegalArgumentException 启动失败（P7 容器化时踩到）
+    @RabbitListener(queues = "${link.core.mq.queue:link.visit.queue}")
     public void onVisit(VisitMessage message) {
         handler.handle(message);
     }

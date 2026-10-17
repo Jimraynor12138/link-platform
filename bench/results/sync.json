@@ -1,0 +1,16 @@
+{
+  "label": "同步统计",
+  "url": "http://localhost:8080/1",
+  "concurrency": 50,
+  "durationSec": 20,
+  "total": 59604,
+  "ok": 0,
+  "fail": 59604,
+  "qps": 2964.3,
+  "errorRate": 100,
+  "avgMs": 16.79,
+  "p50": 15.87,
+  "p95": 25.6,
+  "p99": 35.93,
+  "maxMs": 162.21
+}

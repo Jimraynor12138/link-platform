@@ -48,6 +48,17 @@ spring:
 server:
   port: 8080
 
+# 健康检查（compose healthcheck 用）：只暴露 health/info，不暴露 env/beans 等敏感端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
 # 网关鉴权配置
 link:
   gateway:

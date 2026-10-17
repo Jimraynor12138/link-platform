@@ -66,6 +66,17 @@ feign:
 server:
   port: 8082
 
+# 健康检查（compose healthcheck 用）：只暴露 health/info，不暴露 env/beans 等敏感端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true

@@ -1,0 +1,16 @@
+{
+  "label": "Kafka 异步 (c=10)",
+  "url": "http://localhost:8080/1",
+  "concurrency": 10,
+  "durationSec": 20,
+  "total": 29121,
+  "ok": 29120,
+  "fail": 1,
+  "qps": 1450,
+  "errorRate": 0,
+  "avgMs": 6.87,
+  "p50": 6.18,
+  "p95": 11.17,
+  "p99": 15.49,
+  "maxMs": 451.23
+}

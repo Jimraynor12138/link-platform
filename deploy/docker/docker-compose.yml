@@ -1,0 +1,270 @@
+# ============================================================
+# AAF-link-platform 全栈编排（P7）
+#
+# 启动：
+#   cd deploy/docker
+#   copy .env.example .env        # Windows（Linux 用 cp）
+#   docker compose up -d --build
+#
+# 访问：http://localhost（管理后台） / http://localhost:8080/{code}（短链跳转）
+#
+# 端口策略（P3-1/P2-2 网络收口）：
+#   - 业务只暴露 link-web(80) 与 link-gateway(8080)
+#   - link-auth / link-core 不写 ports → 宿主机直连 8081/8082 会被拒
+#   - 中间件端口仅为本机排查保留映射，生产应删除
+# ============================================================
+name: link-platform
+
+services:
+  # ---------------- 基础设施 ----------------
+  link-mysql:
+    # 复用本机已有镜像（8.4 为 LTS，SQL 与 8.0 兼容）
+    image: mysql:8.4
+    container_name: link-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-link123456}
+      MYSQL_DATABASE: link_platform
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_general_ci
+      - --default-time-zone=+08:00
+    volumes:
+      - mysql-data:/var/lib/mysql
+      # 01→02→03→04 按文件名顺序自动执行（01 里含 CREATE DATABASE）
+      - ../sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    networks: [link-net]
+
+  link-redis:
+    image: redis:8
+    container_name: link-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [link-net]
+
+  link-rabbit:
+    image: rabbitmq:3.13-management-alpine
+    container_name: link-rabbit
+    restart: unless-stopped
+    environment:
+      # 不能用 guest：官方镜像的 guest 只允许回环，跨容器会被 ACCESS_REFUSED
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-link}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-link123456}
+      TZ: Asia/Shanghai
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 20s
+    networks: [link-net]
+
+  link-nacos:
+    image: nacos/nacos-server:v2.4.2
+    container_name: link-nacos
+    restart: unless-stopped
+    environment:
+      MODE: standalone
+      NACOS_AUTH_ENABLE: "false"
+      JVM_XMS: 256m
+      JVM_XMX: 512m
+    ports:
+      # 8848 HTTP，9848/9849 gRPC（Nacos 2.x 客户端必需）
+      - "8848:8848"
+      - "9848:9848"
+      - "9849:9849"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8848/nacos/v1/console/health/readiness || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    networks: [link-net]
+
+  link-kafka:
+    image: apache/kafka:3.8.0
+    container_name: link-kafka
+    restart: unless-stopped
+    hostname: link-kafka
+    environment:
+      CLUSTER_ID: "4L6g3nShT-eMCtK--X86sw"
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      # 双 listener：容器内走 link-kafka:19092，宿主机走 localhost:9092
+      KAFKA_LISTENERS: "CONTROLLER://:29093,PLAINTEXT://:19092,PLAINTEXT_HOST://:9092"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://link-kafka:19092,PLAINTEXT_HOST://localhost:9092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@link-kafka:29093"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 3
+      # topic 由 core 的 NewTopic 显式创建，拼错名字要报错而不是静默建一个错的
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+    networks: [link-net]
+
+  # ---------------- 业务服务 ----------------
+  link-auth:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.service
+      args:
+        JAR_FILE: link-auth/target/link-auth-0.1.0-SNAPSHOT.jar
+    image: link-auth:local
+    container_name: link-auth
+    restart: unless-stopped
+    # 不映射端口：宿主机直连 8081 被拒（P3-1/P2-2 收口）
+    environment:
+      SPRING_PROFILES_ACTIVE: container
+      NACOS_SERVER_ADDR: link-nacos:8848
+      LINK_AUTH_JWT_SECRET: ${LINK_AUTH_JWT_SECRET:-link-platform-demo-jwt-secret-please-change-32bytes}
+      SPRING_DATASOURCE_URL: jdbc:mysql://link-mysql:3306/link_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-link123456}
+      SPRING_DATA_REDIS_HOST: link-redis
+      SPRING_DATA_REDIS_PORT: "6379"
+      SPRING_DATA_REDIS_DATABASE: "1"
+    depends_on:
+      link-mysql:
+        condition: service_healthy
+      link-redis:
+        condition: service_healthy
+      link-nacos:
+        condition: service_healthy
+    healthcheck:
+      # Debian 版 JRE 没有 wget/curl，用 bash 的 /dev/tcp 探端口（端口起来即视为就绪）
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8081"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+    networks: [link-net]
+
+  link-core:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.service
+      args:
+        JAR_FILE: link-core/target/link-core-0.1.0-SNAPSHOT.jar
+    image: link-core:local
+    container_name: link-core
+    restart: unless-stopped
+    # 不映射端口：宿主机直连 8082 被拒
+    environment:
+      SPRING_PROFILES_ACTIVE: container
+      NACOS_SERVER_ADDR: link-nacos:8848
+      SPRING_DATASOURCE_URL: jdbc:mysql://link-mysql:3306/link_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-link123456}
+      SPRING_DATA_REDIS_HOST: link-redis
+      SPRING_DATA_REDIS_PORT: "6379"
+      SPRING_DATA_REDIS_DATABASE: "1"
+      SPRING_RABBITMQ_HOST: link-rabbit
+      SPRING_RABBITMQ_PORT: "5672"
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-link}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASS:-link123456}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: link-kafka:19092
+      # 短链域名走网关（收口后 8082 对外不可达）
+      LINK_CORE_DOMAIN: ${LINK_CORE_DOMAIN:-localhost:8080}
+      # 压测时用环境变量覆盖这三项（见 docker-compose.bench.yml）
+      LINK_CORE_MQ_ENABLED: ${LINK_CORE_MQ_ENABLED:-true}
+      LINK_CORE_MQ_TYPE: ${LINK_CORE_MQ_TYPE:-rabbit}
+      LINK_CORE_ANTI_ABUSE_ENABLED: ${LINK_CORE_ANTI_ABUSE_ENABLED:-true}
+      # 容器/对外环境关掉配置快照回显
+      LINK_CORE_INTERNAL_EXPOSE_CONFIG: "false"
+    depends_on:
+      link-mysql:
+        condition: service_healthy
+      link-redis:
+        condition: service_healthy
+      link-rabbit:
+        condition: service_healthy
+      link-nacos:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8082"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+    networks: [link-net]
+
+  link-gateway:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.service
+      args:
+        JAR_FILE: link-gateway/target/link-gateway-0.1.0-SNAPSHOT.jar
+    image: link-gateway:local
+    container_name: link-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: container
+      NACOS_SERVER_ADDR: link-nacos:8848
+      LINK_AUTH_JWT_SECRET: ${LINK_AUTH_JWT_SECRET:-link-platform-demo-jwt-secret-please-change-32bytes}
+      SPRING_DATA_REDIS_HOST: link-redis
+      SPRING_DATA_REDIS_PORT: "6379"
+      SPRING_DATA_REDIS_DATABASE: "1"
+    depends_on:
+      link-nacos:
+        condition: service_healthy
+      link-redis:
+        condition: service_healthy
+      link-auth:
+        condition: service_healthy
+      link-core:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+    networks: [link-net]
+
+  link-web:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/link-web/Dockerfile
+    image: link-web:local
+    container_name: link-web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      # nginx 启动时解析 link-gateway，容器必须先存在
+      - link-gateway
+    networks: [link-net]
+
+volumes:
+  mysql-data:
+  kafka-data:
+
+networks:
+  link-net:
+    driver: bridge

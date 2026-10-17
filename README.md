@@ -29,7 +29,7 @@ MyBatis-Plus · MySQL 8 · Redis · RabbitMQ（可切换 Kafka）· Redisson · 
 - ✅ V4（P4）：core 多租户隔离（tenant_id）+ 渠道归因 + API Key 开放接口（签名/配额）+ 跳转防刷（gateway 6 + auth 28 + core 220 单测、E2E 9 项）
 - ✅ V5（P5）：MQ 可切换（RabbitMQ ↔ Kafka）+ retry topic/DLT 死信 + 幂等复用（gateway 6 + auth 28 + core 235 单测、Kafka/Rabbit 双模式 E2E）
 - ✅ V6（P6）：Vue3 管理后台 + 数据看板（登录/短链/分组/看板/租户开通/API Key 租户自助；gateway 6 + auth 40 + core 238 单测、前端 build 通过）
-- ⏳ V7（P7）：Docker Compose 编排 + 压测对比 + README
+- ✅ V7（P7）：Docker Compose 全栈编排 + 网络收口（只暴露 80/8080）+ Nginx 托管前端 + 三组压测对比（284 单测全绿、9 容器 healthy）
 
 ## 本地启动
 
@@ -55,6 +55,27 @@ npm run dev      # http://localhost:5173；/auth 与 /api 由 Vite 代理到网�
 ```
 
 > 管理后台演示账号：`superadmin / 123456`（平台）、`tenantadmin / 123456`（租户）。
+
+## 一键启动（Docker Compose）
+
+```bash
+# 1) 构建产物（宿主机；容器只拷贝）
+mvn clean package -DskipTests
+cd link-web && npm install && npm run build && cd ..
+
+# 2) 起全栈（MySQL/Redis/RabbitMQ/Nacos/Kafka + auth/core/gateway/web）
+cd deploy/docker
+docker compose up -d --build
+
+# 3) 首次启动后发布 Nacos 配置，再重启业务服务
+powershell -NoProfile -ExecutionPolicy Bypass -File ../nacos/import-configs.ps1
+docker compose restart link-core link-auth
+```
+
+访问 `http://localhost`（管理后台）/ `http://localhost:8080/{code}`（短链跳转）。
+**`8081`/`8082` 不对外暴露**（网络收口，直连会被拒）。
+
+详见 `deploy/docker/README.md`；压测方法见 `bench/README.md`，数据见 `docs/test/V7-测试报告.md`。
 
 > **`-Dfile.encoding=UTF-8` 不能省**：JDK 17 + 中文 Windows 的默认字符集是 GBK，
 > 会导致 Nacos 上的中文配置解析失败（`MalformedInputException`），配置静默回退默认值。

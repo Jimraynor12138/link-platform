@@ -1,0 +1,20 @@
+# ============================================================
+# 压测专用的 core 参数 override（用命令行参数，不用环境变量）
+#
+# 为什么不用环境变量：
+#   实测 LINK_CORE_MQ_ENABLED=false 时，@ConditionalOnProperty 读到的值
+#   既不是 true 也不是 false，导致两个 VisitRecorder 都没装配、应用启动失败。
+#   命令行参数是 Spring Boot 最高优先级的 PropertySource，行为确定。
+#
+# 用法（用 BENCH_* 控制场景）：
+#   BENCH_MQ_ENABLED=false docker compose -f docker-compose.yml -f docker-compose.bench-core.yml up -d --force-recreate link-core
+#   BENCH_MQ_TYPE=kafka   docker compose -f docker-compose.yml -f docker-compose.bench-core.yml up -d --force-recreate link-core
+#
+# 注意：防刷固定关闭——否则同 IP 同码 1 秒只记一次统计，会把"统计开销"这个被测变量抹掉。
+# ============================================================
+services:
+  link-core:
+    command:
+      - "--link.core.mq.enabled=${BENCH_MQ_ENABLED:-true}"
+      - "--link.core.mq.type=${BENCH_MQ_TYPE:-rabbit}"
+      - "--link.core.anti-abuse.enabled=false"

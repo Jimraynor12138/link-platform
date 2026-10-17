@@ -1,0 +1,14 @@
+# ============================================================
+# 压测专用 override —— 只用于「直连 core vs 经网关」这一组对比。
+#
+# 用法：
+#   docker compose -f docker-compose.yml -f docker-compose.bench.yml up -d
+#   node ../../bench/loadtest.mjs --url http://localhost:8082/{code} ...
+#
+# 压测完成后必须回到纯净模式重新验证网络收口：
+#   docker compose -f docker-compose.yml up -d --force-recreate link-core
+# ============================================================
+services:
+  link-core:
+    ports:
+      - "8082:8082"

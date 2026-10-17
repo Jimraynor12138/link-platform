@@ -1,0 +1,15 @@
+# Docker 构建上下文 = 仓库根，必须收窄，否则会把 node_modules / 中间产物都发进去
+.git
+.idea
+docs
+*.md
+link-web/node_modules
+link-web/.vite
+
+# 只保留 jar，其余 target 内容全部排除（classes/test-classes/surefire 等）
+**/target/*
+!**/target/*.jar
+
+# 本地凭据不进镜像
+**/application-dev.yml
+**/application-local.yml

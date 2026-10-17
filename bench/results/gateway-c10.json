@@ -1,0 +1,16 @@
+{
+  "label": "经网关 (c=10)",
+  "url": "http://localhost:8080/1",
+  "concurrency": 10,
+  "durationSec": 20,
+  "total": 42874,
+  "ok": 42873,
+  "fail": 1,
+  "qps": 2133.7,
+  "errorRate": 0,
+  "avgMs": 4.67,
+  "p50": 4.36,
+  "p95": 7.06,
+  "p99": 9.93,
+  "maxMs": 117.32
+}
