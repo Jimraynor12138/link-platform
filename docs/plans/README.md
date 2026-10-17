@@ -10,6 +10,6 @@
 | P2 / V2 | [P2-Nacos与Feign通路](./P2-Nacos与Feign通路.md) | ✅ 已完成（含前置技术债清理） | [V2-P2](../devlog/V2-P2-Nacos注册配置与Feign通路.md) |
 | P3 / V3 | [P3-Gateway与Sentinel](./P3-Gateway与Sentinel.md) | ✅ 已完成 | [V3-P3](../devlog/V3-P3-Gateway与Sentinel.md) |
 | P4 / V4 | [P4-core多租户渠道与APIKey](./P4-core多租户渠道与APIKey.md) | ✅ 已完成 | [V4-P4](../devlog/V4-P4-core多租户渠道与APIKey.md) |
-| P5 / V5 | 统计链路 MQ 可切换（RabbitMQ ↔ Kafka，不引入 RocketMQ） | ⏳ 待开始 | — |
+| P5 / V5 | [P5-MQ可切换与Kafka](./P5-MQ可切换与Kafka.md) | ✅ 已完成 | [V5-P5](../devlog/V5-P5-MQ可切换与Kafka.md) |
 | P6 / V6 | Vue3 管理后台 + 看板 | ⏳ 待开始 | — |
 | P7 / V7 | Docker Compose 编排 + 压测对比 | ⏳ 待开始 | — |

@@ -27,7 +27,8 @@ MyBatis-Plus · MySQL 8 · Redis · RabbitMQ（可切换 Kafka）· Redisson · 
 - ✅ V2（P2）：前置技术债清理 + Nacos 注册与配置中心 + OpenFeign 服务间调用（配置动态刷新、容错模式；core 198 + auth 28 单测、E2E 7 项 + 容错 2 场景）
 - ✅ V3（P3）：Gateway 路由 + 鉴权前置（身份透传 + 防伪造）+ Sentinel 两层限流与熔断降级（gateway 6 + auth 28 + core 202 单测、E2E 10 项）
 - ✅ V4（P4）：core 多租户隔离（tenant_id）+ 渠道归因 + API Key 开放接口（签名/配额）+ 跳转防刷（gateway 6 + auth 28 + core 220 单测、E2E 9 项）
-- ⏳ V5（P5）：Kafka 统计链路（与 RabbitMQ 可切换）+ 死信/幂等
+- ✅ V5（P5）：MQ 可切换（RabbitMQ ↔ Kafka）+ retry topic/DLT 死信 + 幂等复用（gateway 6 + auth 28 + core 233 单测、Kafka/Rabbit 双模式 E2E）
+- ⏳ V6（P6）：Vue3 管理后台 + 数据看板
 
 ## 本地启动
 
