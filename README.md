@@ -12,7 +12,7 @@
 | link-auth      | 租户 / 用户 / 角色 / 权限、双 Token、API Key |
 | link-core      | 短链核心：发号、缓存、跳转、布隆过滤器、降级 |
 | link-stats     | 统计消费与数据看板查询                       |
-| link-admin-web | 管理后台（Vue 3 + Element Plus + ECharts）   |
+| link-web       | 管理后台（Vue 3 + Element Plus + ECharts）   |
 | deploy         | docker-compose、Nginx、SQL 初始化脚本        |
 
 ## 技术栈
@@ -28,7 +28,8 @@ MyBatis-Plus · MySQL 8 · Redis · RabbitMQ（可切换 Kafka）· Redisson · 
 - ✅ V3（P3）：Gateway 路由 + 鉴权前置（身份透传 + 防伪造）+ Sentinel 两层限流与熔断降级（gateway 6 + auth 28 + core 202 单测、E2E 10 项）
 - ✅ V4（P4）：core 多租户隔离（tenant_id）+ 渠道归因 + API Key 开放接口（签名/配额）+ 跳转防刷（gateway 6 + auth 28 + core 220 单测、E2E 9 项）
 - ✅ V5（P5）：MQ 可切换（RabbitMQ ↔ Kafka）+ retry topic/DLT 死信 + 幂等复用（gateway 6 + auth 28 + core 235 单测、Kafka/Rabbit 双模式 E2E）
-- ⏳ V6（P6）：Vue3 管理后台 + 数据看板
+- ✅ V6（P6）：Vue3 管理后台 + 数据看板（登录/短链/分组/看板/租户/API Key；gateway 6 + auth 32 + core 238 单测、前端 build 通过）
+- ⏳ V7（P7）：Docker Compose 编排 + 压测对比 + README
 
 ## 本地启动
 
@@ -41,11 +42,19 @@ docker compose -f deploy/nacos/docker-compose.yml up -d
 # 2) 发布配置（首次，或改动 deploy/nacos/config/ 之后）
 powershell -NoProfile -ExecutionPolicy Bypass -File deploy\nacos\import-configs.ps1
 
-# 3) 构建并启动服务
+# 3) 构建并启动服务（三个终端，或在后台分别启动）
 mvn clean install -DskipTests
 java -Dfile.encoding=UTF-8 -jar link-auth/target/link-auth-0.1.0-SNAPSHOT.jar --spring.profiles.active=dev
 java -Dfile.encoding=UTF-8 -jar link-core/target/link-core-0.1.0-SNAPSHOT.jar --spring.profiles.active=dev
+java -Dfile.encoding=UTF-8 -jar link-gateway/target/link-gateway-0.1.0-SNAPSHOT.jar --spring.profiles.active=dev
+
+# 4) 起管理后台（另一个终端）
+cd link-web
+npm install
+npm run dev      # http://localhost:5173；/auth 与 /api 由 Vite 代理到网关 8080
 ```
+
+> 管理后台演示账号：`superadmin / 123456`（平台）、`tenantadmin / 123456`（租户）。
 
 > **`-Dfile.encoding=UTF-8` 不能省**：JDK 17 + 中文 Windows 的默认字符集是 GBK，
 > 会导致 Nacos 上的中文配置解析失败（`MalformedInputException`），配置静默回退默认值。

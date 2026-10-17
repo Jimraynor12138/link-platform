@@ -11,5 +11,5 @@
 | P3 / V3 | [P3-Gateway与Sentinel](./P3-Gateway与Sentinel.md) | ✅ 已完成 | [V3-P3](../devlog/V3-P3-Gateway与Sentinel.md) |
 | P4 / V4 | [P4-core多租户渠道与APIKey](./P4-core多租户渠道与APIKey.md) | ✅ 已完成 | [V4-P4](../devlog/V4-P4-core多租户渠道与APIKey.md) |
 | P5 / V5 | [P5-MQ可切换与Kafka](./P5-MQ可切换与Kafka.md) | ✅ 已完成 | [V5-P5](../devlog/V5-P5-MQ可切换与Kafka.md) |
-| P6 / V6 | [P6-Vue3管理后台与数据看板](./P6-Vue3管理后台与数据看板.md) | 🚧 进行中 | [V6-P6](../devlog/V6-P6-Vue3管理后台与数据看板.md) |
+| P6 / V6 | [P6-Vue3管理后台与数据看板](./P6-Vue3管理后台与数据看板.md) | ✅ 已完成 | [V6-P6](../devlog/V6-P6-Vue3管理后台与数据看板.md) |
 | P7 / V7 | Docker Compose 编排 + 压测对比 | ⏳ 待开始 | — |
