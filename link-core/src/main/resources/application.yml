@@ -21,6 +21,21 @@ spring:
       transport:
         # Sentinel Dashboard 地址（本地 8858；Dashboard 未启动时不影响服务运行）
         dashboard: ${SENTINEL_DASHBOARD_ADDR:localhost:8858}
+    # Feign 客户端：超时与日志级别属框架级配置，留在本地（只有业务配置才进配置中心）
+    # 【踩坑】必须放 spring.cloud.openfeign.*；写成 feign.openfeign.* 不会生效，会一直用默认超时（10s/60s）
+    openfeign:
+      client:
+        config:
+          default:
+            connect-timeout: 2000
+            read-timeout: 5000
+            logger-level: basic
+  # 定时任务线程池：默认只有 1 个线程，统计 flush 与兜底扫描会互相排队
+  # 【踩坑】必须放 spring.task.scheduling.*；写在 feign.task.* 不会生效
+  task:
+    scheduling:
+      pool:
+        size: 2
   # Kafka 客户端（P5 第二实现）：序列化与类型信任属框架级配置，留在本地；
   # 连接地址（bootstrap-servers）属于环境连接信息，见 application-dev.yml
   kafka:
@@ -42,22 +57,11 @@ spring:
 
 # Feign 接入 Sentinel：服务间调用按资源名做熔断降级。
 # 【注意】这是顶层 feign.* 配置，不是 spring.cloud.sentinel.feign.*（踩过坑）
+# 超时/日志级别不在这里，见上面的 spring.cloud.openfeign.*
+# （P5 复审修复：原先误缩进在 feign 下，导致一直是默认超时 10s/60s）
 feign:
   sentinel:
     enabled: true
-    # Feign：超时与日志级别属框架级配置，留在本地（只有业务配置才进配置中心）
-    openfeign:
-      client:
-        config:
-          default:
-            connect-timeout: 2000
-            read-timeout: 5000
-            logger-level: basic
-  # 定时任务线程池：默认只有 1 个线程，统计 flush 与兜底扫描会互相排队
-  task:
-    scheduling:
-      pool:
-        size: 2
 
 server:
   port: 8082

@@ -50,7 +50,7 @@
 4. **KRaft 单节点的三个必填项**：固定 `CLUSTER_ID`、副本因子必须为 1（否则 `__consumer_offsets` 创建失败）、`KAFKA_ADVERTISED_LISTENERS` 必须含 `localhost:9092`（否则宿主机客户端连到容器内 IP）。
 5. **Kafka 镜像来源**：Docker Hub 直连不通；`apache/kafka` **在** daocloud 白名单内（`bladex/sentinel-dashboard` 不在，所以 Sentinel 才改用 jar）。
 6. **Nacos 回读校验的 `contentMatch` 对行尾敏感**：本地文件 CRLF 与 Nacos 存的 LF 不同会导致 `contentMatch=False`，但内容其实是合法的（用 curl 直接拉取核对过）。
-7. **（顺带发现，P2 遗留）Feign 超时配置缩进错误**：`feign.openfeign.client.config.*` 不是合法的 Spring Cloud OpenFeign 路径（应为 `spring.cloud.openfeign.*` 或旧式 `feign.client.config.*`），当前实际用的是默认超时。已登记台账，未在本版改动。
+7. **（P2 遗留，本版已修）Feign 超时配置缩进错误**：`feign.openfeign.client.config.*` 不是合法的 Spring Cloud OpenFeign 路径（前缀实为 `spring.cloud.openfeign.client`，用 `javap -v` 核实），实际一直用默认超时 10s/60s；同批 `feign.task.scheduling.*` 也是错的（调度线程池一直是 1 个）。已改为 `spring.cloud.openfeign.*` / `spring.task.scheduling.*`，并加绑定真实 yml 的回归测试。
 
 ---
 
@@ -58,7 +58,7 @@
 
 | 项 | 结果 |
 |---|---|
-| 全量单测 | **267 全绿**（gateway `6/0/0/0`、auth `28/0/0/0`、core `233/0/0/1`） |
+| 全量单测 | **269 全绿**（gateway `6/0/0/0`、auth `28/0/0/0`、core `235/0/0/1`） |
 | Kafka 模式 E2E | topic 3 个自动创建（`link.visit` / `.retry` / `.dlt`）；跳转→消费→DB `pv=1`；consumer lag = **0** |
 | Rabbit 模式 + Kafka 停机 | core **正常启动**，跳转→消费→DB `pv=1`（证明 `type=rabbit` 不装配 Kafka） |
 | 装配矩阵单测 | rabbit（默认）/ kafka / enabled=false 三组合 + type 拼错 fail-fast，5 用例 |
