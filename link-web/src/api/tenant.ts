@@ -24,3 +24,23 @@ export async function createApiKey(payload: {
   const { data } = await http.post<ApiResult<ApiKeyCreated>>('/auth/api-keys', payload)
   return data.data
 }
+
+export interface TenantCreatePayload {
+  name: string
+  quotaPerDay?: number
+  adminUsername: string
+  adminPassword: string
+  adminNickname?: string
+}
+
+export interface TenantCreated {
+  tenantId: number
+  tenantName: string
+  adminUsername: string
+}
+
+/** 平台侧：开通新租户（同时创建租户管理员账号） */
+export async function createTenant(payload: TenantCreatePayload): Promise<TenantCreated> {
+  const { data } = await http.post<ApiResult<TenantCreated>>('/auth/tenants', payload)
+  return data.data
+}
