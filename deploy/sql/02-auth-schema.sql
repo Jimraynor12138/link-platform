@@ -136,7 +136,8 @@ INSERT INTO `t_permission` (`id`, `code`, `name`) VALUES
 (2, 'user:manage',   '用户管理'),
 (3, 'link:manage',   '短链管理'),
 (4, 'link:read',     '短链只读'),
-(5, 'stats:read',    '统计查看');
+(5, 'stats:read',    '统计查看'),
+(6, 'apikey:manage', 'API Key 管理');
 
 -- 角色：平台管理员（tenant_id=0）、租户管理员与只读（tenant_id=1）
 INSERT INTO `t_role` (`id`, `tenant_id`, `code`, `name`, `remark`) VALUES
@@ -144,10 +145,10 @@ INSERT INTO `t_role` (`id`, `tenant_id`, `code`, `name`, `remark`) VALUES
 (2, 1, 'TENANT_ADMIN',   '租户管理员', '仅管理本租户'),
 (3, 1, 'VIEWER',         '只读用户',   '仅查看');
 
--- 角色-权限：平台管理员全权限；租户管理员除租户管理外；只读仅查看
+-- 角色-权限：平台管理员全权限；租户管理员除租户管理外，P6 起含 apikey:manage；只读仅查看
 INSERT INTO `t_role_permission` (`role_id`, `permission_id`) VALUES
-(1, 1), (1, 2), (1, 3), (1, 4), (1, 5),
-(2, 2), (2, 3), (2, 4), (2, 5),
+(1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6),
+(2, 2), (2, 3), (2, 4), (2, 5), (2, 6),
 (3, 4), (3, 5);
 
 -- 用户（密码均为 123456）

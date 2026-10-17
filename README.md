@@ -28,7 +28,7 @@ MyBatis-Plus · MySQL 8 · Redis · RabbitMQ（可切换 Kafka）· Redisson · 
 - ✅ V3（P3）：Gateway 路由 + 鉴权前置（身份透传 + 防伪造）+ Sentinel 两层限流与熔断降级（gateway 6 + auth 28 + core 202 单测、E2E 10 项）
 - ✅ V4（P4）：core 多租户隔离（tenant_id）+ 渠道归因 + API Key 开放接口（签名/配额）+ 跳转防刷（gateway 6 + auth 28 + core 220 单测、E2E 9 项）
 - ✅ V5（P5）：MQ 可切换（RabbitMQ ↔ Kafka）+ retry topic/DLT 死信 + 幂等复用（gateway 6 + auth 28 + core 235 单测、Kafka/Rabbit 双模式 E2E）
-- ✅ V6（P6）：Vue3 管理后台 + 数据看板（登录/短链/分组/看板/租户/API Key；gateway 6 + auth 32 + core 238 单测、前端 build 通过）
+- ✅ V6（P6）：Vue3 管理后台 + 数据看板（登录/短链/分组/看板/租户/API Key 租户自助；gateway 6 + auth 37 + core 238 单测、前端 build 通过）
 - ⏳ V7（P7）：Docker Compose 编排 + 压测对比 + README
 
 ## 本地启动
