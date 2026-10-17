@@ -1,5 +1,6 @@
 package com.aaf.link.core.config;
 
+import jakarta.annotation.PostConstruct;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
@@ -63,6 +64,18 @@ public class LinkCoreProperties {
      * 雪花算法发号配置（V3.5）
      */
     private Snowflake snowflake = new Snowflake();
+
+    /**
+     * 启动期校验 MQ 类型，避免拼错导致"零实现"而报错晦涩
+     * （沿用 {@code JwtProperties} 的 fail-fast 模式）。
+     */
+    @PostConstruct
+    void validateMqType() {
+        String type = mq.getType();
+        if (type != null && !type.isBlank() && !"rabbit".equals(type) && !"kafka".equals(type)) {
+            throw new IllegalStateException("link.core.mq.type 只能是 rabbit 或 kafka，实际值: " + type);
+        }
+    }
 
     @Data
     public static class Bloom {
@@ -168,6 +181,29 @@ public class LinkCoreProperties {
          * 场景：MQ 不可用、或压测做对照实验
          */
         private boolean enabled = true;
+
+        /**
+         * MQ 实现类型（P5 新增）：rabbit（默认基线）/ kafka。
+         *
+         * <p>注意：这是<b>启动期条件装配</b>，改它必须重启，不支持热切换。
+         * 取值在 {@code LinkCoreProperties#validateMqType} 里做 fail-fast 校验。
+         */
+        private String type = "rabbit";
+
+        /** Kafka topic（主） */
+        private String topic = "link.visit";
+
+        /** Kafka 重试 topic */
+        private String retryTopic = "link.visit.retry";
+
+        /** Kafka 死信 topic */
+        private String dltTopic = "link.visit.dlt";
+
+        /** Kafka 最大重试次数（超过后进 DLT），与 RabbitMQ 的重试次数对齐 */
+        private int maxRetry = 3;
+
+        /** Kafka 消费组 */
+        private String consumerGroup = "link-core-stats";
 
         private String exchange = "link.visit.exchange";
 

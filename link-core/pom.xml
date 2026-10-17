@@ -68,10 +68,16 @@
             <artifactId>caffeine</artifactId>
         </dependency>
 
-        <!-- RabbitMQ 异步统计 -->
+        <!-- RabbitMQ 异步统计（P5 基线实现） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+
+        <!-- Kafka 异步统计（P5 第二实现；版本由 Spring Boot 3.2 BOM 管理，不写版本号） -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
         </dependency>
 
         <!-- ORM -->

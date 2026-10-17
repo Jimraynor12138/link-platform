@@ -23,6 +23,17 @@ link:
       # false 时退化为同步统计（降级路径，也是压测对比的对照组）
       # 【注意】@ConditionalOnProperty 驱动，改动需重启
       enabled: true
+      # MQ 实现类型（P5）：rabbit（基线）/ kafka（第二实现）
+      # 【注意】同样是启动期条件装配，改完必须重启，不支持热切换
+      type: rabbit
+      # ---- Kafka 拓扑（type=kafka 时生效）----
+      topic: link.visit
+      retry-topic: link.visit.retry
+      dlt-topic: link.visit.dlt
+      # 最大重试次数（超过后进死信），与 RabbitMQ 的重试次数对齐
+      max-retry: 3
+      consumer-group: link-core-stats
+      # ---- RabbitMQ 拓扑（type=rabbit 时生效）----
       exchange: link.visit.exchange
       queue: link.visit.queue
       routing-key: link.visit
@@ -30,6 +41,11 @@ link:
       dead-letter-queue: link.visit.dlq
       # 消费幂等 key 保留时间（秒）= 允许的重投窗口，不要取大值
       idempotent-ttl-seconds: 60
+    # 跳转链路防刷（P4）：单 IP 对同一短码的统计去重，fail-open 不拖慢跳转
+    anti-abuse:
+      enabled: true
+      # 去重窗口（秒）：同一 IP 对同一短码在该窗口内只记一次统计
+      window-seconds: 1
     # 号段模式发号：一次申请一段号放内存里发，双 buffer 异步预取
     segment:
       # t_segment 的业务标识（一个业务一行）

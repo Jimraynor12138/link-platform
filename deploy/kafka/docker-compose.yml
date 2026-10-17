@@ -1,0 +1,51 @@
+# ============================================================
+# Kafka 单节点（KRaft 模式，免 ZooKeeper）
+# 用途：P5「MQ 可切换」的第二实现，与本地 RabbitMQ 并行存在
+# 启动：docker compose -f deploy/kafka/docker-compose.yml up -d
+# 停止：docker compose -f deploy/kafka/docker-compose.yml down
+# 说明：拓扑取自 Apache Kafka 官方单节点 plaintext 示例（三个监听器），
+#       宿主机上的 link-core 通过 localhost:9092 连接。
+# ============================================================
+services:
+  kafka:
+    image: apache/kafka:3.8.0
+    container_name: link-kafka
+    # 固定 hostname：KRaft 的 controller quorum 与容器内互访都靠它解析
+    hostname: link-kafka
+    ports:
+      # 只暴露宿主机访问端口；19092/29093 是容器内互访，不需要映射
+      - "9092:9092"
+    environment:
+      # 固定集群 ID（KRaft 格式化存储用；固定值便于重建环境结果可复现）
+      CLUSTER_ID: "4L6g3nShT-eMCtK--X86sw"
+      KAFKA_NODE_ID: 1
+      # 单节点同时承担 broker + controller
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      # 三个监听器：CONTROLLER（内部仲裁）、PLAINTEXT（容器内）、PLAINTEXT_HOST（宿主机）
+      KAFKA_LISTENERS: "CONTROLLER://:29093,PLAINTEXT://:19092,PLAINTEXT_HOST://:9092"
+      # 关键：宿主机客户端拿到的 advertised 必须是 localhost:9092，否则连不上
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://link-kafka:19092,PLAINTEXT_HOST://localhost:9092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@link-kafka:29093"
+      # 单节点必须把副本因子设为 1，否则 __consumer_offsets 等内部 topic 创建失败
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 3
+      # 关闭自动建 topic：由应用启动时用 NewTopic 显式声明（拼错 topic 名会直接报错，而不是静默建一个错的）
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      # 官方镜像自带 CLI，用它探活比看端口更准（端口开着不代表 broker 可用）
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+
+volumes:
+  kafka-data:

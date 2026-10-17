@@ -1,0 +1,126 @@
+package com.aaf.link.core.mq.consumer;
+
+import com.aaf.link.core.mq.IdempotentChecker;
+import com.aaf.link.core.mq.message.VisitMessage;
+import com.aaf.link.core.service.StatsService;
+import com.aaf.link.core.service.StatsSnapshotService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+/**
+ * 消费业务处理器测试（P5 从 VisitStatsConsumerTest 原样迁移，<b>断言一条未删/未弱化</b>）。
+ *
+ * 覆盖：正常处理、重复跳过、严格写入抛出（触发重试/死信）、先标记脏再写统计、
+ * 空消息不抛、日期兜底。
+ */
+@ExtendWith(MockitoExtension.class)
+class VisitMessageHandlerTest {
+
+    private static final LocalDate VISIT_DATE = LocalDate.of(2026, 10, 2);
+    private static final String CODE = "abc123";
+
+    @Mock
+    private IdempotentChecker idempotentChecker;
+    @Mock
+    private StatsService statsService;
+    @Mock
+    private StatsSnapshotService statsSnapshotService;
+
+    private VisitMessageHandler handler;
+
+    @BeforeEach
+    void setUp() {
+        handler = new VisitMessageHandler(idempotentChecker, statsService, statsSnapshotService);
+    }
+
+    private VisitMessage message() {
+        VisitMessage message = new VisitMessage();
+        message.setVisitId("visit-1");
+        message.setCode(CODE);
+        message.setClientIp("1.2.3.4");
+        message.setUserAgent("Mozilla/5.0 (iPhone)");
+        message.setReferer("https://www.baidu.com/s?wd=1");
+        // 消息发生时间决定统计归属日期（跨零点场景）
+        message.setVisitTime(LocalDateTime.of(2026, 10, 2, 23, 59, 59));
+        return message;
+    }
+
+    @Test
+    void consumesWithStrictWriteAndMessageDate() {
+        when(idempotentChecker.tryConsume("visit-1")).thenReturn(true);
+
+        handler.handle(message());
+
+        verify(statsService).recordVisitStrict(CODE, "1.2.3.4", "Mozilla/5.0 (iPhone)",
+                "https://www.baidu.com/s?wd=1", VISIT_DATE);
+        verify(statsSnapshotService).markDirty(CODE, VISIT_DATE);
+    }
+
+    @Test
+    void marksDirtyBeforeWritingStats() {
+        // 顺序保证：先标记脏再写统计，重试时不会重复累加 PV
+        when(idempotentChecker.tryConsume("visit-1")).thenReturn(true);
+
+        handler.handle(message());
+
+        InOrder inOrder = inOrder(statsSnapshotService, statsService);
+        inOrder.verify(statsSnapshotService).markDirty(CODE, VISIT_DATE);
+        inOrder.verify(statsService).recordVisitStrict(anyString(), anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    void skipsDuplicateMessage() {
+        when(idempotentChecker.tryConsume("visit-1")).thenReturn(false);
+
+        handler.handle(message());
+
+        verify(statsService, never()).recordVisitStrict(anyString(), anyString(), anyString(), any(), any());
+        verify(statsSnapshotService, never()).markDirty(anyString(), any());
+    }
+
+    @Test
+    void releasesIdempotentKeyAndThrowsWhenStatsWriteFails() {
+        // 统计写入失败必须抛出让 MQ 重试（这是修复前失效的路径）
+        when(idempotentChecker.tryConsume("visit-1")).thenReturn(true);
+        doThrow(new RuntimeException("redis down")).when(statsService)
+                .recordVisitStrict(anyString(), anyString(), anyString(), any(), any());
+
+        assertThrows(RuntimeException.class, () -> handler.handle(message()));
+
+        verify(idempotentChecker).release("visit-1");
+    }
+
+    @Test
+    void nullMessageIsIgnoredWithoutException() {
+        // payload 为空导致转换结果为空时，重投也无法处理，直接丢弃且不抛异常
+        handler.handle(null);
+        verify(statsService, never()).recordVisitStrict(anyString(), anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    void fallsBackToTodayWhenMessageHasNoTime() {
+        when(idempotentChecker.tryConsume("visit-1")).thenReturn(true);
+        VisitMessage message = message();
+        message.setVisitTime(null);
+
+        handler.handle(message);
+
+        verify(statsSnapshotService).markDirty(CODE, LocalDate.now());
+    }
+}

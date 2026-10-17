@@ -10,8 +10,8 @@ import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
 
 /**
@@ -22,7 +22,7 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 @RequiredArgsConstructor
-@ConditionalOnProperty(prefix = "link.core.mq", name = "enabled", havingValue = "true", matchIfMissing = true)
+@Conditional(MqConditions.RabbitMqCondition.class)
 public class RabbitMqConfig {
 
     private final LinkCoreProperties properties;

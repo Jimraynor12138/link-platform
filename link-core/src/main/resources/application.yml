@@ -21,6 +21,24 @@ spring:
       transport:
         # Sentinel Dashboard 地址（本地 8858；Dashboard 未启动时不影响服务运行）
         dashboard: ${SENTINEL_DASHBOARD_ADDR:localhost:8858}
+  # Kafka 客户端（P5 第二实现）：序列化与类型信任属框架级配置，留在本地；
+  # 连接地址（bootstrap-servers）属于环境连接信息，见 application-dev.yml
+  kafka:
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # JSON 序列化：消息可在 Kafka 工具里直接阅读（与 Rabbit 的 Jackson2Json 一致）
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      # 无历史 offset 时从头读（本地演示友好；生产按需改 latest）
+      auto-offset-reset: earliest
+      properties:
+        # 安全默认：只信任业务消息所在包，避免反序列化任意类型
+        "[spring.json.trusted.packages]": "com.aaf.link.core.mq.message"
+    admin:
+      # Kafka 未就绪时不阻塞应用启动（与 Nacos discovery.fail-fast:false 同款容错思路）
+      fail-fast: false
 
 # Feign 接入 Sentinel：服务间调用按资源名做熔断降级。
 # 【注意】这是顶层 feign.* 配置，不是 spring.cloud.sentinel.feign.*（踩过坑）
