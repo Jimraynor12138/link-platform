@@ -19,16 +19,19 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
-/** 菜单：平台专属项按 tenantId === 0 过滤 */
+/**
+ * 菜单：租户管理仅平台可见；API Key 平台或持 apikey:manage 的租户管理员可见
+ */
 const menus = computed(() => {
+  const canManageApiKey = auth.isPlatform || auth.permissions.includes('apikey:manage')
   const items = [
-    { path: '/link', label: '短链管理', icon: Link2, platformOnly: false },
-    { path: '/group', label: '分组管理', icon: FolderTree, platformOnly: false },
-    { path: '/dashboard', label: '数据看板', icon: BarChart3, platformOnly: false },
-    { path: '/tenant', label: '租户管理', icon: Building2, platformOnly: true },
-    { path: '/apikey', label: 'API Key', icon: KeyRound, platformOnly: true },
+    { path: '/link', label: '短链管理', icon: Link2, show: true },
+    { path: '/group', label: '分组管理', icon: FolderTree, show: true },
+    { path: '/dashboard', label: '数据看板', icon: BarChart3, show: true },
+    { path: '/tenant', label: '租户管理', icon: Building2, show: auth.isPlatform },
+    { path: '/apikey', label: 'API Key', icon: KeyRound, show: canManageApiKey },
   ]
-  return items.filter((item) => !item.platformOnly || auth.isPlatform)
+  return items.filter((item) => item.show)
 })
 
 function go(path: string) {

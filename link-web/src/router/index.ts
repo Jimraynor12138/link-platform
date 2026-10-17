@@ -41,7 +41,8 @@ const routes: RouteRecordRaw[] = [
         path: 'apikey',
         name: 'apikey',
         component: () => import('@/views/apikey/index.vue'),
-        meta: { title: 'API Key', platformOnly: true },
+        // P6-4：平台或持 apikey:manage 的租户管理员可进（后端仍会按租户收敛数据）
+        meta: { title: 'API Key', permission: 'apikey:manage' },
       },
     ],
   },
@@ -71,6 +72,12 @@ router.beforeEach(async (to) => {
 
   // 平台专属页面：非平台账号直接挡回短链管理
   if (to.meta.platformOnly && !auth.isPlatform) {
+    return { path: '/link' }
+  }
+
+  // 权限码页面（如 API Key）：平台放行，其余要求持有对应权限
+  const required = to.meta.permission as string | undefined
+  if (required && !auth.isPlatform && !auth.permissions.includes(required)) {
     return { path: '/link' }
   }
 

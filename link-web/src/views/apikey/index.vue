@@ -3,7 +3,11 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Copy, KeyRound, RefreshCw } from 'lucide-vue-next'
 import { createApiKey, listApiKeys, listTenants } from '@/api/tenant'
+import { useAuthStore } from '@/stores/auth'
 import type { ApiKeyCreated, ApiKeyItem, TenantItem } from '@/types'
+
+const auth = useAuthStore()
+const isPlatform = computed(() => auth.isPlatform)
 
 const loading = ref(false)
 const keys = ref<ApiKeyItem[]>([])
@@ -41,19 +45,23 @@ function loadKeys() {
 }
 
 onMounted(() => {
-  loadTenants()
+  if (isPlatform.value) {
+    loadTenants()
+  }
   loadKeys()
 })
 
 function openCreate() {
-  form.tenantId = selectedTenant.value ?? tenants.value[0]?.id ?? 0
+  form.tenantId = isPlatform.value
+    ? (selectedTenant.value ?? tenants.value[0]?.id ?? 0)
+    : (auth.user?.tenantId ?? 0)
   form.quota = 100000
   form.expireAt = ''
   dialogVisible.value = true
 }
 
 function submit() {
-  if (!form.tenantId) {
+  if (isPlatform.value && !form.tenantId) {
     ElMessage.warning('请选择租户')
     return
   }
@@ -98,6 +106,7 @@ const tenantOptions = computed(() => tenants.value)
       </div>
       <div class="flex items-center gap-2">
         <el-select
+          v-if="isPlatform"
           v-model="selectedTenant"
           placeholder="全部租户"
           clearable
@@ -145,7 +154,7 @@ const tenantOptions = computed(() => tenants.value)
 
     <el-dialog v-model="dialogVisible" title="生成 API Key" width="460px" :close-on-click-modal="false">
       <el-form :model="form" label-width="90px">
-        <el-form-item label="租户" required>
+        <el-form-item v-if="isPlatform" label="租户" required>
           <el-select v-model="form.tenantId" class="w-full" placeholder="选择租户">
             <el-option v-for="t in tenants" :key="t.id" :label="`${t.name}（#${t.id}）`" :value="t.id" />
           </el-select>
