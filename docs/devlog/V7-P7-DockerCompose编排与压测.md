@@ -59,6 +59,9 @@
 9. **容器初始化中文双重编码**：官方 mysql 镜像的 `docker-entrypoint.sh` 用 `mysql` CLI 执行 `deploy/sql/*.sql`，客户端字符集 `auto` 跟随容器 locale（未设 `LANG` 时落到 latin1）→ 种子中文（`默认分组`、`演示租户`…）被按 latin1 解释后再转存 utf8mb4，读出来是 `é»˜è®¤åˆ†ç»„`。
    → 四个 SQL 顶部加 `SET NAMES utf8mb4`（与客户端 locale 解耦）+ compose 给 MySQL 加 `LANG=C.UTF-8`（双保险）；存量数据用 `deploy/sql/repair/01-fix-mojibake.sql` 原地修复。**只看服务端 `--character-set-server` 不够，客户端字符集是独立的一环。**
 
+   **修复脚本第一版还踩了个坑**：用 `LENGTH = 2 × CHAR_LENGTH` 识别乱码行，结果 **0 行命中**。因为 MySQL 的 `latin1` 实际是 **cp1252**，`0x98/0x86/0x84` 会被映射成 `˜/†/„` 这些 **3 字节**字符——乱码串是"2 字节为主 + 少量 3 字节"，长度比不成立（实测 `26 ≠ 2×12`）。改用"UTF-8 首字节是 `C2/C3`"识别（正常中文首字节是 `E4–E9`、ASCII 是 `41–7A`），一次命中 9 行。
+   **教训**：处理编码问题时，"猜长度"不如"看首字节"；而且 `latin1` 这个名词在不同系统里含义不同（MySQL 的是 cp1252，不是 ISO-8859-1）。
+
 ---
 
 ## 5. 验证数据

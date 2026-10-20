@@ -1,57 +1,58 @@
 -- ============================================================
--- 修复：Docker 初始化时中文被双重编码（UTF-8 被按 Latin-1 导入）
+-- 修复：容器初始化时中文被双重编码（UTF-8 被按 Windows-1252 导入）
 --
--- 现象：库里存的是「默认分组」的 UTF-8 字节被当成 latin1 再转存的结果，
---       读出来是 é»˜è®¤åˆ†ç»„（HEX 以 C3A9 开头）。
+-- 现象：库里存的是「默认分组」的 UTF-8 字节被当成 cp1252 再转存的结果，
+--       读出来是 é»˜è®¤åˆ†ç»„（HEX 以 C3A9 开头，长度 26 字节 / 12 字符）。
 -- 根因：官方 mysql 镜像的 docker-entrypoint.sh 用 mysql CLI 执行
 --       /docker-entrypoint-initdb.d/*.sql，客户端 --default-character-set=auto
---       跟随容器 locale；未设 LANG 时落到 latin1。
+--       跟随容器 locale；没设 LANG 时落到 latin1（MySQL 的 latin1 实际是 cp1252），
+--       于是 0x98/0x86/0x84 被映射成 ˜/†/„（两个 3 字节字符）。
 -- 根治：deploy/sql/0*.sql 已加 SET NAMES utf8mb4；compose 已加 LANG=C.UTF-8。
--- 本脚本：只修复**已经写坏**的数据，可重复执行（第二次匹配不到任何行）。
 --
--- 执行方式（Windows cmd，注意 < 是 cmd 的重定向，不是 bash 续行）：
+-- 本脚本：只修**已经写坏**的行，可重复执行（第二次匹配不到任何行）。
+--
+-- 【判据为什么不用 LENGTH=2*CHAR_LENGTH】
+--   cp1252 的 0x80–0x9F 会被映射成 U+02xx/U+20xx（3 字节），
+--   所以乱码串是"2 字节为主 + 少量 3 字节"，长度比不成立（26 ≠ 2×12）。
+--   改用"首字符是 C2/C3 开头（即 é/æ/å 这类 2 字节拉丁字符）"识别：
+--   正常中文的 UTF-8 首字节是 E4–E9，纯 ASCII 是 41–7A，都不会命中。
+--
+-- 执行方式（Windows cmd，`<` 是 cmd 的输入重定向，整条写一行）：
 --   cd /d <repo>
---   docker exec -i link-mysql mysql -uroot -plink123456 < deploy\sql\repair\01-fix-mojibake.sql
+--   docker exec -i link-mysql mysql -uroot -p<密码> < deploy\sql\repair\01-fix-mojibake.sql
 -- ============================================================
 SET NAMES utf8mb4;
 USE `link_platform`;
 
--- 判据说明：
---   乱码行的每个字符都落在 U+0080–U+00FF（é/»/˜…），utf8mb4 下占 2 字节；
---   正常中文占 3 字节，纯 ASCII 占 1 字节。
---   因此 LENGTH = 2 × CHAR_LENGTH 是"整串都被拉丁化过"的可靠特征。
---   再叠加 id 范围（只碰种子数据），避免误伤后续通过 UI 正常写入的行。
-
 UPDATE `t_group`
 SET `name` = CONVERT(BINARY(CONVERT(`name` USING latin1)) USING utf8mb4)
-WHERE `gid` = 'default'
-  AND LENGTH(`name`) = 2 * CHAR_LENGTH(`name`);
+WHERE HEX(`name`) REGEXP '^(C2|C3)';
 
 UPDATE `t_tenant`
 SET `name` = CONVERT(BINARY(CONVERT(`name` USING latin1)) USING utf8mb4)
-WHERE `id` <= 3
-  AND LENGTH(`name`) = 2 * CHAR_LENGTH(`name`);
+WHERE HEX(`name`) REGEXP '^(C2|C3)';
 
 UPDATE `t_role`
 SET `name`   = CONVERT(BINARY(CONVERT(`name`   USING latin1)) USING utf8mb4),
     `remark` = CONVERT(BINARY(CONVERT(`remark` USING latin1)) USING utf8mb4)
-WHERE `id` <= 3
-  AND LENGTH(`name`) = 2 * CHAR_LENGTH(`name`);
+WHERE HEX(`name`) REGEXP '^(C2|C3)';
 
 UPDATE `t_user`
 SET `nickname` = CONVERT(BINARY(CONVERT(`nickname` USING latin1)) USING utf8mb4)
-WHERE `id` <= 4
-  AND LENGTH(`nickname`) = 2 * CHAR_LENGTH(`nickname`);
+WHERE HEX(`nickname`) REGEXP '^(C2|C3)';
 
--- t_permission 里有混合串（"API Key 管理" = ASCII + 中文），2 倍判据不成立，
--- 改用"HEX 里出现 C2/C3 开头的双字节序列"来识别（正常中文的字节是 E4~E9 开头，
--- 续字节都在 80~BF，不会出现 C2/C3 作为序列首字节）。
+-- 权限表通常是好的（实测 0 行命中），保留这条只为兜底
 UPDATE `t_permission`
 SET `name` = CONVERT(BINARY(CONVERT(`name` USING latin1)) USING utf8mb4)
-WHERE `id` <= 6
-  AND HEX(`name`) REGEXP 'C[23][0-9A-F]{2}';
+WHERE HEX(`name`) REGEXP '^(C2|C3)';
 
--- 校验：修复后 HEX 应以 E9BB98（默认）、E6BC94（演示）等中文 UTF-8 开头
+-- 短链描述若含种子中文，同样处理
+UPDATE `t_link`
+SET `description` = CONVERT(BINARY(CONVERT(`description` USING latin1)) USING utf8mb4)
+WHERE `description` IS NOT NULL
+  AND HEX(`description`) REGEXP '^(C2|C3)';
+
+-- 校验：修复后 HEX 应为中文 UTF-8（默认分组 = E9BB98E8AEA4E58886E7BB84）
 SELECT 'group' AS tbl, `name`, HEX(`name`) AS hex_name FROM `t_group` WHERE `gid` = 'default'
 UNION ALL SELECT 'tenant', `name`, HEX(`name`) FROM `t_tenant`
 UNION ALL SELECT 'role',   `name`, HEX(`name`) FROM `t_role`
