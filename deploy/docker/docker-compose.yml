@@ -26,6 +26,9 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-link123456}
       MYSQL_DATABASE: link_platform
       TZ: Asia/Shanghai
+      # 关键：initdb 阶段用 mysql CLI 跑 deploy/sql，客户端字符集 auto 跟随 locale；
+      # 不设 LANG 会落到 latin1 → 中文种子数据双重编码
+      LANG: C.UTF-8
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_general_ci

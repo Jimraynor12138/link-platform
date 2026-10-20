@@ -11,6 +11,10 @@
 --   4) 种子密码均为 123456（BCrypt 摘要，已用 BCryptPasswordEncoder.matches 验证通过）。
 -- 执行方式：mysql -uroot -p < deploy/sql/02-auth-schema.sql
 -- ============================================================
+
+-- 【P7】显式声明客户端字符集，避免容器内 CLI 按 latin1 导入导致中文双重编码
+SET NAMES utf8mb4;
+
 USE `link_platform`;
 
 -- ------------------------------------------------------------

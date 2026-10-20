@@ -4,6 +4,13 @@
 -- 执行方式：先 CREATE DATABASE link_platform，再执行本脚本
 -- ============================================================
 
+-- 【P7 容器化踩坑】必须显式声明客户端字符集：
+-- 官方 mysql 镜像的 docker-entrypoint.sh 用 mysql CLI 执行本目录脚本，
+-- 客户端 --default-character-set=auto 会跟随容器 locale；未设 LANG 时落到 latin1，
+-- 脚本里的中文（表注释、种子数据）被按 latin1 解释后转存 → 双重编码（é»˜è®¤åˆ†ç»„）。
+-- SET NAMES 与客户端 locale 无关，是最可靠的一道保险。
+SET NAMES utf8mb4;
+
 CREATE DATABASE IF NOT EXISTS `link_platform` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 USE `link_platform`;
 

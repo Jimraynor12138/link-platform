@@ -7,6 +7,9 @@
 -- 幂等：t_permission 主键 + t_role_permission 唯一键 (role_id, permission_id)，
 --      用 INSERT IGNORE 可重复执行。
 -- ============================================================
+-- 【P7】显式声明客户端字符集，避免容器内 CLI 按 latin1 导入导致中文双重编码
+SET NAMES utf8mb4;
+
 USE `link_platform`;
 
 INSERT IGNORE INTO `t_permission` (`id`, `code`, `name`)

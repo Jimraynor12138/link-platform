@@ -56,6 +56,8 @@
 6. **Nacos 配置发布顺序**：core 启动前若配置未发布，会走代码默认值（修了坑 2 后可启动）；发布后需重启才生效（`spring.config.import` 是启动期加载）。
 7. **`link.core.domain` 必须改走网关**：否则生成的短链是 `localhost:8082`，收口后打不开。
 8. **单进程压测客户端会饱和**：c=50 时直连/网关都卡在 ~2500 QPS，谁快谁慢是噪声；**必须降并发测延迟**（c=10）才有信号。
+9. **容器初始化中文双重编码**：官方 mysql 镜像的 `docker-entrypoint.sh` 用 `mysql` CLI 执行 `deploy/sql/*.sql`，客户端字符集 `auto` 跟随容器 locale（未设 `LANG` 时落到 latin1）→ 种子中文（`默认分组`、`演示租户`…）被按 latin1 解释后再转存 utf8mb4，读出来是 `é»˜è®¤åˆ†ç»„`。
+   → 四个 SQL 顶部加 `SET NAMES utf8mb4`（与客户端 locale 解耦）+ compose 给 MySQL 加 `LANG=C.UTF-8`（双保险）；存量数据用 `deploy/sql/repair/01-fix-mojibake.sql` 原地修复。**只看服务端 `--character-set-server` 不够，客户端字符集是独立的一环。**
 
 ---
 

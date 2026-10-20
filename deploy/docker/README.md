@@ -78,6 +78,7 @@ docker compose down -v         # 连数据一起清（重建数据库）
 | 服务注册不上、配置读不到 | Nacos 2.x 需要 9848（gRPC），只放 8848 会出现"控制台能开、客户端连不上" |
 | 短链域名是 8082 | `LINK_CORE_DOMAIN` 没设或没生效；容器内必须是 `localhost:8080` |
 | 数据库表不存在 | `deploy/sql` 没挂上，或执行了 `down -v` 后没重建；首次启动看 `docker logs link-mysql` |
+| 中文显示成 `é»˜è®¤åˆ†ç»„` 这类乱码 | MySQL 初始化时客户端字符集是 latin1（容器无 `LANG`）。已用 `SET NAMES utf8mb4` + `LANG=C.UTF-8` 根治；**存量数据**执行 `docker exec -i link-mysql mysql -uroot -p<密码> < ../sql/repair/01-fix-mojibake.sql`，或 `down -v` 重建 |
 
 ## 压测模式
 
