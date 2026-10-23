@@ -47,14 +47,15 @@
   - `getTenantId()`：从 `TenantContext` 取；**为空或 `PLATFORM_TENANT_ID=0` 返回 null（关闭过滤，平台管理员看全量）**。
   - `ignoreTable()`：`t_sequence`、`t_segment`（无 tenant_id 字段的表）豁免。
   - **跳转豁免**：`LinkMapper` 的按 code 查询方法加 `@InterceptorIgnore(tenantLine = "1")`——访客无租户上下文，否则跳转 404。
-- **统计是 MQ 异步**：点击消息体带 `tenant_id`、`channel`，消费者按消息字段写入，不依赖 ThreadLocal。
+- **统计是 MQ 异步**：点击消息体只带 `code` + 原始访问事实（IP/UA/Referer/visitTime），**不带** `tenant_id`/`channel`；两者在 `flush()` 落库时按 code 批量反查 `t_link` 补齐（`StatsSnapshotServiceImpl.resolveLinks` → `flushOne`），消费端不依赖 ThreadLocal。
+  - **与初版方案的差异（V4 复审订正）**：初版设想"消息体带租户"，实现时改为反查。原因：① 租户归属以 DB 为唯一真相，消息里带的只能取自跳转缓存（可能过期/短链转手），反查拿到的永远是 `t_link` 当前值；② 跳转链路免租户是既定设计，消息只带 `code` 才不会把租户压力倒灌回读路径；③ 反查是"每 2 秒一次 IN 查询"，比"每条消息带一次"便宜。详见 `docs/03-技术点与面试素材.md` 10.5。
 
 ---
 
 ## 5. 渠道归因
 
 - `LinkCreateReqDTO` 加 `channel`（可选，`@Size(max=32)`，空转 `''`）。
-- 跳转点击上报消息带 `channel`；`t_link_stats` 按 `(link_id, date, channel)` 聚合；统计查询提供渠道维度（为 P6 看板铺数据）。
+- 跳转点击上报消息只带 `code`（**不带** `channel`）；`t_link_stats` 按 `(link_id, date, channel)` 聚合，`channel` 在落库时反查短链补齐；统计查询提供渠道维度（为 P6 看板铺数据）。
 
 ---
 
@@ -90,7 +91,7 @@
 
 1. 多租户拦截器会拦所有表，跳转按 code 查必须豁免，否则访客跳转 404
 2. 平台级（tenant_id=0）要"不过滤"（`getTenantId()` 返回 null）
-3. 统计是 MQ 异步，消息体要带 tenant_id/channel
+3. 统计消息**不带** tenant_id/channel：消息只带 `code`，租户与渠道在 `flush()` 落库时按 code 反查 `t_link` 补齐（若把跳转缓存里的租户值写进消息，过期/转手时会错归属）
 4. core 信任 `X-Tenant-Id` 的前提（直连伪造，P3-1 → P7）
 5. `uk_link_date` 改含 channel 后，upsert 维度变了；channel 用 `''` 而非 NULL
 6. `t_group` 'default' 种子只有一条，多租户下每租户自动建自己的默认分组
